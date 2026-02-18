@@ -12,7 +12,9 @@ const Dashboard = () => {
     const [recentTransactions, setRecentTransactions] = useState([]);
     const [savings, setSavings] = useState(0);
     const [isNotifOpen, setIsNotifOpen] = useState(false);
-    const [isCatOpen, setIsCatOpen] = useState(false);
+    const [showCategoryManager, setShowCategoryManager] = useState(false);
+    const [showPinModal, setShowPinModal] = useState(false);
+    const [pinInput, setPinInput] = useState("");
     const [isEditingBudget, setIsEditingBudget] = useState(false);
     const [isAdjustingSavings, setIsAdjustingSavings] = useState(false);
     const [budgetForm, setBudgetForm] = useState({ dailyLimit: '', date: new Date().toISOString().split('T')[0] });
@@ -95,15 +97,15 @@ const Dashboard = () => {
 
     const totalBalance = cards.reduce((acc, card) => acc + card.balance, 0);
 
-    const handleSetPin = async () => {
-        const pin = prompt("أدخل رمزاً مكوناً من 4 أرقام لتفعيل القفل (أو اتركه فارغاً للإلغاء):");
-        if (pin === null) return;
-        if (pin === "" || pin.length === 4) {
-            await api.setPin(pin || null);
-            alert(pin ? "تم تفعيل القفل بنجاح" : "تم إلغاء القفل");
-        } else {
-            alert("يرجى إدخال 4 أرقام بالضبط");
-        }
+    const handleSetPin = () => {
+        setPinInput("");
+        setShowPinModal(true);
+    };
+
+    const submitPin = async (finalPin) => {
+        await api.setPin(finalPin || null);
+        setShowPinModal(false);
+        alert(finalPin ? "تم تفعيل القفل بنجاح" : "تم إلغاء القفل");
     };
 
     return (
@@ -126,7 +128,7 @@ const Dashboard = () => {
                         <Bell size={24} />
                         <div className="absolute top-3 right-3 w-2 h-2 bg-primary rounded-full border-2 border-dark"></div>
                     </button>
-                    <button onClick={() => setIsCatOpen(true)} className="p-3 glass rounded-2xl flex items-center justify-center">
+                    <button onClick={() => setShowCategoryManager(true)} className="p-3 glass rounded-2xl flex items-center justify-center">
                         <Settings size={24} />
                     </button>
                 </div>
@@ -389,8 +391,89 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            <NotificationsModal isOpen={isNotifOpen} onClose={() => setIsNotifOpen(false)} />
-            <CategoryManager isOpen={isCatOpen} onClose={() => setIsCatOpen(false)} />
+            {/* PIN Setup Modal */}
+            <AnimatePresence>
+                {showPinModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="w-full max-w-md glass rounded-3xl p-8 text-center"
+                        >
+                            <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <Lock className="text-primary" size={32} />
+                            </div>
+
+                            <h2 className="text-2xl font-bold mb-2">إعداد رمز القفل</h2>
+                            <p className="text-gray-400 mb-8">أدخل 4 أرقام لحماية بياناتك</p>
+
+                            <div className="flex justify-center gap-4 mb-8">
+                                {[1, 2, 3, 4].map((_, i) => (
+                                    <div
+                                        key={i}
+                                        className={`w-12 h-16 rounded-2xl flex items-center justify-center border-2 transition-all ${pinInput.length > i ? 'border-primary bg-primary/10' : 'border-gray-700 bg-gray-800/50'
+                                            }`}
+                                    >
+                                        {pinInput.length > i && <div className="w-3 h-3 bg-white rounded-full" />}
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-4 mb-8">
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+                                    <button
+                                        key={num}
+                                        onClick={() => pinInput.length < 4 && setPinInput(prev => prev + num)}
+                                        className="h-16 rounded-2xl glass hover:bg-white/10 flex items-center justify-center text-xl font-bold active:scale-95 transition-all"
+                                    >
+                                        {num}
+                                    </button>
+                                ))}
+                                <button
+                                    onClick={() => submitPin("")}
+                                    className="h-16 rounded-2xl text-red-400 hover:bg-red-400/10 flex items-center justify-center text-sm font-bold"
+                                >
+                                    إلغاء القفل
+                                </button>
+                                <button
+                                    onClick={() => pinInput.length < 4 && setPinInput(prev => prev + "0")}
+                                    className="h-16 rounded-2xl glass hover:bg-white/10 flex items-center justify-center text-xl font-bold active:scale-95 transition-all"
+                                >
+                                    0
+                                </button>
+                                <button
+                                    onClick={() => setPinInput(prev => prev.slice(0, -1))}
+                                    className="h-16 rounded-2xl glass hover:bg-white/10 flex items-center justify-center text-xl font-bold active:scale-95 transition-all"
+                                >
+                                    ←
+                                </button>
+                            </div>
+
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={() => setShowPinModal(false)}
+                                    className="flex-1 py-4 rounded-2xl bg-gray-800 hover:bg-gray-700 font-bold transition-all"
+                                >
+                                    إلغاء
+                                </button>
+                                <button
+                                    onClick={() => pinInput.length === 4 && submitPin(pinInput)}
+                                    disabled={pinInput.length !== 4}
+                                    className={`flex-1 py-4 rounded-2xl font-bold transition-all ${pinInput.length === 4 ? 'bg-primary hover:bg-primary-dark' : 'bg-gray-700 opacity-50 cursor-not-allowed'
+                                        }`}
+                                >
+                                    تأكيد
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            <NotificationsModal
+                isOpen={isNotifOpen} onClose={() => setIsNotifOpen(false)} />
+            <CategoryManager isOpen={showCategoryManager} onClose={() => setShowCategoryManager(false)} />
 
             {/* Quick Converter Modal */}
             <AnimatePresence>
