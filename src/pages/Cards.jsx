@@ -89,7 +89,7 @@ const Cards = () => {
     return (
         <div className="px-5 pt-8 pb-32" dir="rtl">
             <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-black">المحافظ</h1>
+                <h1 className="text-2xl font-black">المحافظ</h1>
                 <button
                     onClick={() => setIsAdding(true)}
                     className="p-3 bg-primary rounded-2xl shadow-lg shadow-primary/20 active:scale-90 transition-transform"
@@ -147,8 +147,8 @@ const Cards = () => {
                                         </span>
                                     )}
                                 </div>
-                                <h2 className="text-4xl font-black tracking-tighter">
-                                    {card.balance.toLocaleString()} <span className="text-sm opacity-60">د.ع</span>
+                                <h2 className="text-3xl font-black tracking-tighter">
+                                    {card.balance.toLocaleString('en-US')} <span className="text-sm opacity-60">د.ع</span>
                                 </h2>
                             </div>
 

@@ -113,8 +113,8 @@ const Dashboard = () => {
             {/* Header */}
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold">مرحباً بك</h1>
-                    <p className="text-gray-400 text-sm">إليك ملخص حياتك المالية اليوم</p>
+                    <h1 className="text-xl font-bold">مرحباً بك</h1>
+                    <p className="text-gray-400 text-xs">إليك ملخص حياتك المالية اليوم</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <button
@@ -145,8 +145,8 @@ const Dashboard = () => {
                 </div>
                 <div className="flex justify-between items-start">
                     <div>
-                        <p className="text-blue-100 text-sm mb-1">إجمالي الرصيد</p>
-                        <h2 className="text-3xl font-bold mb-4">{totalBalance.toLocaleString()} د.ع</h2>
+                        <p className="text-blue-100 text-xs mb-1">إجمالي الرصيد</p>
+                        <h2 className="text-2xl font-bold mb-4">{totalBalance.toLocaleString('en-US')} د.ع</h2>
                     </div>
                     <div className="text-right">
                         <p className="text-blue-100 text-sm mb-1">صندوق الادخار</p>
@@ -155,9 +155,9 @@ const Dashboard = () => {
                                 setSavingsForm({ amount: '', type: 'SET' });
                                 setIsAdjustingSavings(true);
                             }}
-                            className="text-xl font-bold bg-white/20 px-3 py-1 rounded-xl hover:bg-white/30 transition-colors"
+                            className="text-lg font-bold bg-white/20 px-3 py-1 rounded-xl hover:bg-white/30 transition-colors"
                         >
-                            {savings.toLocaleString()} د.ع
+                            {savings.toLocaleString('en-US')} د.ع
                         </button>
                     </div>
                 </div>
@@ -221,7 +221,7 @@ const Dashboard = () => {
                             <RefreshCw size={10} className="text-gray-500 animate-spin-slow" />
                         </div>
                         <h4 className="text-lg font-black tracking-tight">
-                            $1 = <span className="text-green-500">{exchangeData.rate.toLocaleString()}</span> د.ع
+                            $1 = <span className="text-green-500">{exchangeData.rate.toLocaleString('en-US')}</span> د.ع
                         </h4>
                     </div>
                 </div>
@@ -236,7 +236,7 @@ const Dashboard = () => {
             <div className="glass rounded-2xl p-5 mb-8 border border-white/5 relative group">
                 <div className="flex justify-between items-center mb-4">
                     <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-lg">ميزانية يوم:</h3>
+                        <h3 className="font-semibold text-base">ميزانية يوم:</h3>
                         <input
                             type="date"
                             className="bg-transparent text-sm text-primary font-bold outline-none cursor-pointer"
@@ -261,11 +261,11 @@ const Dashboard = () => {
                         className={`h-full rounded-full ${(budgetStatus.spent / budgetStatus.budget) > 0.9 ? 'bg-red-500' : 'bg-primary'}`}
                     ></motion.div>
                 </div>
-                <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">صرفت: {budgetStatus.spent.toLocaleString()}</span>
+                <div className="flex justify-between text-xs">
+                    <span className="text-gray-400">صرفت: {budgetStatus.spent.toLocaleString('en-US')}</span>
                     <span className={budgetStatus.remaining < 0 ? 'text-red-400 font-bold' : 'text-green-400 font-bold'}>
                         {budgetStatus.remaining < 0 ? 'تجاوزت بـ: ' : 'باقي لك: '}
-                        {Math.abs(budgetStatus.remaining).toLocaleString()} د.ع
+                        {Math.abs(budgetStatus.remaining).toLocaleString('en-US')} د.ع
                     </span>
                 </div>
             </div>
@@ -381,11 +381,11 @@ const Dashboard = () => {
                                     <Plus size={20} className={tx.type === 'EXPENSE' ? 'rotate-45' : ''} />
                                 </div>
                                 <div>
-                                    <h4 className="font-bold text-sm">{tx.description}</h4>
-                                    <p className="text-[10px] text-gray-500">{new Date(tx.date).toLocaleDateString('ar-IQ')}</p>
+                                    <h4 className="font-bold text-xs">{tx.description}</h4>
+                                    <p className="text-[10px] text-gray-500">{new Date(tx.date).toLocaleDateString('en-US')}</p>
                                 </div>
                             </div>
-                            <p className="font-black text-sm">{tx.amount.toLocaleString()} د.ع</p>
+                            <p className="font-black text-sm">{tx.amount.toLocaleString('en-US')} د.ع</p>
                         </div>
                     ))}
                 </div>

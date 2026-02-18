@@ -36,7 +36,7 @@ const Navbar = () => {
                             initial={{ y: '100%', opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
                             exit={{ y: '100%', opacity: 0 }}
-                            className="fixed bottom-20 left-4 right-4 glass z-[60] p-6 rounded-[2.5rem] border border-white/10 shadow-2xl"
+                            className="fixed bottom-24 left-4 right-4 glass z-[60] p-6 rounded-[2.5rem] border border-white/10 shadow-2xl"
                         >
                             <div className="flex justify-between items-center mb-6">
                                 <h3 className="font-black text-lg">المزيد من الميزات</h3>
@@ -67,7 +67,10 @@ const Navbar = () => {
                 )}
             </AnimatePresence>
 
-            <nav className="fixed bottom-0 left-0 right-0 glass h-16 flex items-center justify-around px-4 z-50 rounded-t-2xl border-t border-white/5">
+            <nav
+                className="fixed bottom-0 left-0 right-0 glass flex items-center justify-around px-4 z-50 rounded-t-2xl border-t border-white/5"
+                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 16px) + 8px)', paddingTop: '12px' }}
+            >
                 {mainItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = location.pathname === item.path && !isMoreOpen;

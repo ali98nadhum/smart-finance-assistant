@@ -67,7 +67,7 @@ const Transactions = () => {
     const exportToCSV = () => {
         const headers = ["التاريخ", "الوصف", "المبلغ", "القسم", "البطاقة", "النوع"];
         const rows = transactions.map(tx => [
-            new Date(tx.date).toLocaleDateString('ar-IQ'),
+            new Date(tx.date).toLocaleDateString('en-US'),
             tx.description,
             tx.amount,
             tx.category?.name || 'عام',
@@ -91,7 +91,7 @@ const Transactions = () => {
     return (
         <div className="pb-32 pt-8 px-6 animate-fade-in" dir="rtl">
             <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold">المعاملات</h1>
+                <h1 className="text-2xl font-bold">المعاملات</h1>
                 <div className="flex gap-2">
                     <button
                         onClick={exportToCSV}
@@ -132,14 +132,14 @@ const Transactions = () => {
                                             </span>
                                         )}
                                         <span className="text-[10px] text-gray-500">
-                                            {new Date(tx.date).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })}
+                                            {new Date(tx.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                     </div>
                                 </div>
                             </div>
                             <div className="text-left">
                                 <p className={`font-black text-xl ${tx.type === 'EXPENSE' ? 'text-white' : 'text-green-500'}`}>
-                                    {tx.type === 'EXPENSE' ? '-' : '+'}{tx.amount.toLocaleString()} د.ع
+                                    {tx.type === 'EXPENSE' ? '-' : '+'}{tx.amount.toLocaleString('en-US')} د.ع
                                 </p>
                                 <p className="text-[10px] text-gray-500 mt-1">{tx.card?.name || 'بطاقة محذوفة'}</p>
                             </div>

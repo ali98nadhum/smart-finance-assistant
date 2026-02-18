@@ -43,7 +43,7 @@ const Statistics = () => {
     return (
         <div className="pb-32 pt-8 px-5" dir="rtl">
             <header className="flex justify-between items-center mb-10">
-                <h1 className="text-3xl font-black">التحليلات</h1>
+                <h1 className="text-2xl font-black">التحليلات</h1>
                 <div className="flex bg-white/5 backdrop-blur-xl rounded-2xl p-1.5 border border-white/10">
                     {['daily', 'weekly', 'monthly'].map((r) => (
                         <button
@@ -72,7 +72,7 @@ const Statistics = () => {
                             className="glass p-5 rounded-[2rem] border border-white/5"
                         >
                             <p className="text-[10px] text-gray-400 font-bold mb-1 opacity-60">إجمالي المصاريف</p>
-                            <h4 className="text-xl font-black text-white">{totalSpent.toLocaleString()} <span className="text-[10px] opacity-40">د.ع</span></h4>
+                            <h4 className="text-xl font-black text-white">{totalSpent.toLocaleString('en-US')} <span className="text-[10px] opacity-40">د.ع</span></h4>
                         </motion.div>
                         <motion.div
                             initial={{ opacity: 0, x: -20 }}
@@ -175,7 +175,7 @@ const Statistics = () => {
                                                         <p className="text-[10px] text-gray-500">{percent}% من الإجمالي</p>
                                                     </div>
                                                 </div>
-                                                <p className="font-black text-sm">{item.amount.toLocaleString()} د.ع</p>
+                                                <p className="font-black text-sm">{item.amount.toLocaleString('en-US')} د.ع</p>
                                             </div>
                                         );
                                     })}

@@ -72,7 +72,7 @@ const Debts = () => {
     return (
         <div className="pb-32 pt-8 px-6 animate-fade-in" dir="rtl">
             <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold">الديون والالتزامات</h1>
+                <h1 className="text-2xl font-bold">الديون والالتزامات</h1>
                 <button onClick={() => setIsAdding(true)} className="p-3 bg-primary rounded-2xl shadow-lg shadow-primary/20 transition-transform active:scale-95">
                     <Plus size={24} />
                 </button>
@@ -114,7 +114,7 @@ const Debts = () => {
                                             </div>
                                         </div>
                                         <div className="text-left">
-                                            <p className="font-black text-xl">{debt.amount.toLocaleString()} د.ع</p>
+                                            <p className="font-black text-xl">{debt.amount.toLocaleString('en-US')} د.ع</p>
                                             <div className="flex items-center gap-1 justify-end mt-1">
                                                 {debt.status === 'PAID' ? (
                                                     <span className="text-[10px] text-green-500 font-bold flex items-center gap-1">
@@ -122,7 +122,7 @@ const Debts = () => {
                                                     </span>
                                                 ) : (
                                                     <span className="text-[10px] text-yellow-500 font-bold flex items-center gap-1">
-                                                        <Clock size={10} /> متبقي: {remaining.toLocaleString()}
+                                                        <Clock size={10} /> متبقي: {remaining.toLocaleString('en-US')}
                                                     </span>
                                                 )}
                                             </div>
@@ -136,11 +136,11 @@ const Debts = () => {
                                                 <span className="text-primary">{percentage.toFixed(0)}% مكتمل</span>
                                                 {debt.storedAmount > 0 && (
                                                     <span className="text-yellow-500 flex items-center gap-1">
-                                                        <Landmark size={10} /> مخزون: {debt.storedAmount.toLocaleString()}
+                                                        <Landmark size={10} /> مخزون: {debt.storedAmount.toLocaleString('en-US')}
                                                     </span>
                                                 )}
                                             </div>
-                                            <span className="text-gray-500">{paid.toLocaleString()} من {debt.amount.toLocaleString()} د.ع</span>
+                                            <span className="text-gray-500">{paid.toLocaleString('en-US')} من {debt.amount.toLocaleString('en-US')} د.ع</span>
                                         </div>
                                         <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden border border-white/5 relative">
                                             <div
@@ -167,11 +167,11 @@ const Debts = () => {
                                             <div className="grid grid-cols-2 gap-3 mb-4">
                                                 <div className="glass p-3 rounded-2xl text-center">
                                                     <p className="text-[10px] text-gray-500">المبلغ الكلي</p>
-                                                    <p className="font-bold">{debt.amount.toLocaleString()}</p>
+                                                    <p className="font-bold">{debt.amount.toLocaleString('en-US')}</p>
                                                 </div>
                                                 <div className="glass p-3 rounded-2xl text-center border-yellow-500/20">
                                                     <p className="text-[10px] text-yellow-500">المبلغ المخزون</p>
-                                                    <p className="font-bold text-yellow-500">{debt.storedAmount?.toLocaleString() || 0}</p>
+                                                    <p className="font-bold text-yellow-500">{debt.storedAmount?.toLocaleString('en-US') || 0}</p>
                                                 </div>
                                             </div>
 
@@ -184,8 +184,8 @@ const Debts = () => {
                                                     debt.payments.map((p, i) => (
                                                         <div key={p.id} className="flex justify-between items-center text-xs p-3 glass rounded-xl border border-white/5">
                                                             <span className="font-bold text-primary">الدفعة #{debt.payments.length - i}</span>
-                                                            <span className="font-black">{p.amount.toLocaleString()} د.ع</span>
-                                                            <span className="text-[10px] text-gray-500">{new Date(p.createdAt).toLocaleDateString('ar-IQ')}</span>
+                                                            <span className="font-black">{p.amount.toLocaleString('en-US')} د.ع</span>
+                                                            <span className="text-[10px] text-gray-500">{new Date(p.createdAt).toLocaleDateString('en-US')}</span>
                                                         </div>
                                                     ))
                                                 )}

@@ -68,7 +68,7 @@ const Goals = () => {
     return (
         <div className="px-5 pt-8 pb-32" dir="rtl">
             <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-black">أهداف الادخار</h1>
+                <h1 className="text-2xl font-black">أهداف الادخار</h1>
                 <button
                     onClick={() => setIsAdding(true)}
                     className="p-3 bg-primary rounded-2xl shadow-lg shadow-primary/20 active:scale-90 transition-transform"
@@ -101,7 +101,7 @@ const Goals = () => {
                                             <h3 className="font-bold text-lg">{goal.name}</h3>
                                             <div className="flex items-center gap-2 text-xs text-gray-500">
                                                 <Calendar size={12} />
-                                                <span>{goal.deadline ? new Date(goal.deadline).toLocaleDateString('ar-IQ') : 'بدون موعد'}</span>
+                                                <span>{goal.deadline ? new Date(goal.deadline).toLocaleDateString('en-US') : 'بدون موعد'}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -126,7 +126,7 @@ const Goals = () => {
 
                                 <div className="space-y-3">
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-gray-400">الهدف: {goal.target.toLocaleString()} د.ع</span>
+                                        <span className="text-gray-400">الهدف: {goal.target.toLocaleString('en-US')} د.ع</span>
                                         <span className="font-bold text-primary">{Math.round(progress)}%</span>
                                     </div>
                                     <div className="w-full bg-white/5 h-4 rounded-full overflow-hidden border border-white/5 p-0.5">
@@ -140,7 +140,7 @@ const Goals = () => {
                                     </div>
                                     <div className="text-left">
                                         <span className="text-xs text-gray-500">تم توفير: </span>
-                                        <span className="text-sm font-black">{goal.current.toLocaleString()} د.ع</span>
+                                        <span className="text-sm font-black">{goal.current.toLocaleString('en-US')} د.ع</span>
                                     </div>
                                 </div>
 
