@@ -1,0 +1,70 @@
+import { storageService } from '../services/storageService';
+import { aiService } from '../services/aiService';
+
+export const api = {
+    // Cards
+    getCards: () => Promise.resolve({ data: storageService.getCards() }),
+    createCard: (data) => Promise.resolve({ data: storageService.createCard(data) }),
+    updateCard: (id, data) => Promise.resolve({ data: storageService.updateCard(id, data) }),
+    deleteCard: (id) => Promise.resolve({ data: storageService.deleteCard(id) }),
+
+    // Transactions
+    getTransactions: () => Promise.resolve({ data: storageService.getTransactions() }),
+    createTransaction: (data) => Promise.resolve({ data: storageService.createTransaction(data) }),
+
+    // Budget
+    getBudgetStatus: (date) => Promise.resolve({ data: storageService.getBudgetStatus(date) }),
+    upsertBudget: (data) => Promise.resolve({ data: storageService.upsertBudget(data) }),
+
+    // Debts
+    getDebts: () => Promise.resolve({ data: storageService.getDebts() }),
+    createDebt: (data) => Promise.resolve({ data: storageService.createDebt(data) }),
+    updateDebtStatus: (id, status) => Promise.resolve({ data: storageService.updateDebtStatus(id, status) }),
+
+    // Todos
+    getTodos: () => Promise.resolve({ data: storageService.getTodos() }),
+    createTodo: (data) => Promise.resolve({ data: storageService.createTodo(data) }),
+    toggleTodo: (id) => Promise.resolve({ data: storageService.toggleTodo(id) }),
+    deleteTodo: (id) => Promise.resolve({ data: storageService.deleteTodo(id) }),
+
+    // Notifications
+    getNotifications: () => Promise.resolve({ data: storageService.getNotifications() }),
+    markNotificationRead: (id) => Promise.resolve({ data: storageService.markNotificationRead(id) }),
+
+    // Exchange Rate
+    getExchangeRate: () => Promise.resolve({ data: storageService.getExchangeRate() }),
+    updateExchangeRate: (rate) => Promise.resolve({ data: storageService.updateExchangeRate(rate) }),
+
+    // Goals
+    getGoals: () => Promise.resolve({ data: storageService.getGoals() }),
+    createGoal: (data) => Promise.resolve({ data: storageService.createGoal(data) }),
+    updateGoal: (id, data) => Promise.resolve({ data: storageService.updateGoal(id, data) }),
+    deleteGoal: (id) => Promise.resolve({ data: storageService.deleteGoal(id) }),
+    allocateToGoal: (id, amount) => Promise.resolve({ data: storageService.allocateToGoal(id, amount) }),
+
+    // Security
+    getPin: () => Promise.resolve({ data: storageService.getPin() }),
+    setPin: (pin) => Promise.resolve({ data: storageService.setPin(pin) }),
+    verifyPin: (pin) => Promise.resolve({ data: storageService.verifyPin(pin) }),
+
+    // Categories
+    getCategories: () => Promise.resolve({ data: storageService.getCategories() }),
+    createCategory: (data) => Promise.resolve({ data: storageService.createCategory(data) }),
+    deleteCategory: (id) => Promise.resolve({ data: storageService.deleteCategory(id) }),
+
+    // AI Insights
+    getAIInsights: () => Promise.resolve({ data: aiService.getInsights() }),
+
+    // Debt Payments
+    getPayments: (debtId) => Promise.resolve({ data: storageService.getPayments(debtId) }),
+    addPayment: (data) => Promise.resolve({ data: storageService.addPayment(data) }),
+    storeAmount: (id, amount, type) => Promise.resolve({ data: storageService.storeAmount(id, amount, type) }),
+
+    // User Savings
+    getSavings: () => Promise.resolve({ data: storageService.getSavings() }),
+    updateSavings: (amount, type) => Promise.resolve({ data: storageService.updateSavings(amount, type) }),
+
+    // Stats
+    getDailyStats: (date) => Promise.resolve({ data: storageService.getDailyStats(date) }),
+    getRangeStats: (range) => Promise.resolve({ data: storageService.getRangeStats(range) }),
+};

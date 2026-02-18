@@ -1,0 +1,5 @@
+{
+  "appId": "com.finance.app",
+  "appName": "FinanceApp",
+  "webDir": "dist"
+}
