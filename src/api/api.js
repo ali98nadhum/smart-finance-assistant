@@ -20,11 +20,14 @@ export const api = {
     getDebts: () => Promise.resolve({ data: storageService.getDebts() }),
     createDebt: (data) => Promise.resolve({ data: storageService.createDebt(data) }),
     updateDebtStatus: (id, status) => Promise.resolve({ data: storageService.updateDebtStatus(id, status) }),
+    updateDebt: (id, data) => Promise.resolve({ data: storageService.updateDebt(id, data) }),
+    archiveDebt: (id) => Promise.resolve({ data: storageService.archiveDebt(id) }),
 
     // Todos
     getTodos: () => Promise.resolve({ data: storageService.getTodos() }),
     createTodo: (data) => Promise.resolve({ data: storageService.createTodo(data) }),
     toggleTodo: (id) => Promise.resolve({ data: storageService.toggleTodo(id) }),
+    updateTodo: (id, data) => Promise.resolve({ data: storageService.updateTodo(id, data) }),
     deleteTodo: (id) => Promise.resolve({ data: storageService.deleteTodo(id) }),
 
     // Notifications
@@ -40,7 +43,9 @@ export const api = {
     createGoal: (data) => Promise.resolve({ data: storageService.createGoal(data) }),
     updateGoal: (id, data) => Promise.resolve({ data: storageService.updateGoal(id, data) }),
     deleteGoal: (id) => Promise.resolve({ data: storageService.deleteGoal(id) }),
+    archiveGoal: (id) => Promise.resolve({ data: storageService.archiveGoal(id) }),
     allocateToGoal: (id, amount) => Promise.resolve({ data: storageService.allocateToGoal(id, amount) }),
+    toggleGoalCell: (goalId, cellId) => Promise.resolve({ data: storageService.toggleGoalCell(goalId, cellId) }),
 
     // Security
     getPin: () => Promise.resolve({ data: storageService.getPin() }),

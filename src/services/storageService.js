@@ -244,9 +244,22 @@ export const storageService = {
         ...data,
         amount: parseFloat(data.amount || 0),
         status: 'PENDING',
-        storedAmount: 0
+        storedAmount: 0,
+        notes: data.notes || '',
+        isArchived: false
     }),
     updateDebtStatus: (id, status) => storageService.update(STORAGE_KEYS.DEBTS, id, { status }),
+    updateDebt: (id, updates) => storageService.update(STORAGE_KEYS.DEBTS, id, updates),
+    archiveDebt: (id) => {
+        const debts = storage.get(STORAGE_KEYS.DEBTS);
+        const index = debts.findIndex(d => d.id === id);
+        if (index !== -1) {
+            debts[index].isArchived = !debts[index].isArchived;
+            storage.set(STORAGE_KEYS.DEBTS, debts);
+            return debts[index];
+        }
+        return null;
+    },
     storeAmount: (id, amount, type) => {
         const debts = storage.get(STORAGE_KEYS.DEBTS);
         const index = debts.findIndex(d => d.id === id);
@@ -305,6 +318,7 @@ export const storageService = {
         }
         return null;
     },
+    updateTodo: (id, updates) => storageService.update(STORAGE_KEYS.TODOS, id, updates),
     deleteTodo: (id) => storageService.delete(STORAGE_KEYS.TODOS, id),
 
     // Notifications
@@ -321,14 +335,59 @@ export const storageService = {
 
     // Goals
     getGoals: () => storage.get(STORAGE_KEYS.GOALS).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
-    createGoal: (data) => storageService.save(STORAGE_KEYS.GOALS, {
-        ...data,
-        target: parseFloat(data.target || 0),
-        current: parseFloat(data.current || 0),
-        deadline: data.deadline || null
-    }),
+    createGoal: (data) => {
+        const target = parseFloat(data.target || 0);
+        let grid = null;
+
+        if (data.useGrid) {
+            grid = [];
+            let remaining = target;
+
+            // Always use a mix of denominations for a "Challenge Box" feel
+            const denoms = [15000, 10000, 5000, 2000, 1000];
+
+            while (remaining > 0) {
+                // Filter denominations that fit in the remaining amount
+                const possible = denoms.filter(d => d <= remaining);
+
+                let amount;
+                if (possible.length > 0) {
+                    // Randomly pick from all possible denominations for maximum variety
+                    amount = possible[Math.floor(Math.random() * possible.length)];
+                } else {
+                    amount = remaining;
+                }
+
+                grid.push({ id: generateId(), amount, completed: false });
+                remaining -= amount;
+            }
+
+            // Shuffle grid for better psychological distribution
+            grid = grid.sort(() => Math.random() - 0.5);
+        }
+
+        return storageService.save(STORAGE_KEYS.GOALS, {
+            ...data,
+            target,
+            current: parseFloat(data.current || 0),
+            deadline: data.deadline || null,
+            useGrid: !!data.useGrid,
+            isArchived: false,
+            grid
+        });
+    },
     updateGoal: (id, updates) => storageService.update(STORAGE_KEYS.GOALS, id, updates),
     deleteGoal: (id) => storageService.delete(STORAGE_KEYS.GOALS, id),
+    archiveGoal: (id) => {
+        const goals = storage.get(STORAGE_KEYS.GOALS);
+        const index = goals.findIndex(g => g.id === id);
+        if (index !== -1) {
+            goals[index].isArchived = !goals[index].isArchived;
+            storage.set(STORAGE_KEYS.GOALS, goals);
+            return goals[index];
+        }
+        return null;
+    },
     allocateToGoal: (id, amount) => {
         const goals = storage.get(STORAGE_KEYS.GOALS);
         const index = goals.findIndex(g => g.id === id);
@@ -336,6 +395,28 @@ export const storageService = {
             goals[index].current += parseFloat(amount || 0);
             storage.set(STORAGE_KEYS.GOALS, goals);
             return goals[index];
+        }
+        return null;
+    },
+    toggleGoalCell: (goalId, cellId) => {
+        const goals = storage.get(STORAGE_KEYS.GOALS);
+        const index = goals.findIndex(g => g.id === goalId);
+        if (index !== -1 && goals[index].grid) {
+            const cellIndex = goals[index].grid.findIndex(c => c.id === cellId);
+            if (cellIndex !== -1) {
+                const cell = goals[index].grid[cellIndex];
+                cell.completed = !cell.completed;
+
+                // Update total current amount
+                if (cell.completed) {
+                    goals[index].current += cell.amount;
+                } else {
+                    goals[index].current -= cell.amount;
+                }
+
+                storage.set(STORAGE_KEYS.GOALS, goals);
+                return goals[index];
+            }
         }
         return null;
     },

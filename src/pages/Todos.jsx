@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api/api';
-import { Plus, CheckCircle, Circle, Trash2 } from 'lucide-react';
+import { Plus, CheckCircle, Circle, Trash2, Edit2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Todos = () => {
@@ -9,6 +9,7 @@ const Todos = () => {
     const [category, setCategory] = useState('شخصي');
     const [priority, setPriority] = useState('LOW');
     const [filter, setFilter] = useState('الكل');
+    const [editingTodo, setEditingTodo] = useState(null);
 
     const CATEGORIES = ['شخصي', 'عمل', 'تسوق', 'عاجل'];
     const FILTERS = ['الكل', ...CATEGORIES, 'المكتملة'];
@@ -42,16 +43,42 @@ const Todos = () => {
         e.preventDefault();
         if (!task.trim()) return;
         try {
-            await api.createTodo({
-                task,
-                category,
-                priority
-            });
+            if (editingTodo) {
+                await api.updateTodo(editingTodo.id, {
+                    task,
+                    category,
+                    priority
+                });
+                setEditingTodo(null);
+            } else {
+                await api.createTodo({
+                    task,
+                    category,
+                    priority
+                });
+            }
             setTask('');
+            setCategory('شخصي');
+            setPriority('LOW');
             fetchTodos();
         } catch (error) {
-            console.error("Error adding todo", error);
+            console.error("Error saving todo", error);
         }
+    };
+
+    const handleEdit = (todo) => {
+        setEditingTodo(todo);
+        setTask(todo.task);
+        setCategory(todo.category);
+        setPriority(todo.priority);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const cancelEdit = () => {
+        setEditingTodo(null);
+        setTask('');
+        setCategory('شخصي');
+        setPriority('LOW');
     };
 
     const toggleTodo = async (id) => {
@@ -82,18 +109,26 @@ const Todos = () => {
         <div className="px-6 pt-8 pb-32" dir="rtl">
             <h1 className="text-3xl font-black mb-8">قائمة المهام 📝</h1>
 
-            {/* Add Form */}
-            <form onSubmit={handleAdd} className="space-y-4 mb-10">
+            {/* Add/Edit Form */}
+            <form onSubmit={handleAdd} className={`space-y-4 mb-10 p-6 rounded-[2.5rem] transition-all duration-300 ${editingTodo ? 'bg-primary/10 border border-primary/20 shadow-xl shadow-primary/5' : ''}`}>
+                {editingTodo && (
+                    <div className="flex justify-between items-center mb-2 px-2">
+                        <span className="text-primary font-black text-sm">تعديل المهمة</span>
+                        <button type="button" onClick={cancelEdit} className="text-gray-500 hover:text-white transition-colors">
+                            <X size={20} />
+                        </button>
+                    </div>
+                )}
                 <div className="flex gap-3">
                     <input
                         type="text"
                         className="flex-1 glass p-5 rounded-[2rem] outline-none font-bold border border-white/5"
-                        placeholder="ماذا تريد أن تنجز اليوم؟"
+                        placeholder={editingTodo ? "تعديل المهمة..." : "ماذا تريد أن تنجز اليوم؟"}
                         value={task}
                         onChange={(e) => setTask(e.target.value)}
                     />
                     <button type="submit" className="bg-primary p-5 rounded-[2rem] shadow-lg shadow-primary/20 active:scale-90 transition-transform">
-                        <Plus size={24} />
+                        {editingTodo ? <CheckCircle size={24} /> : <Plus size={24} />}
                     </button>
                 </div>
 
@@ -179,12 +214,20 @@ const Todos = () => {
                                         </div>
                                     </div>
                                 </div>
-                                <button
-                                    onClick={() => handleDelete(todo.id)}
-                                    className="p-3 text-red-500/50 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all duration-300"
-                                >
-                                    <Trash2 size={20} />
-                                </button>
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                                    <button
+                                        onClick={() => handleEdit(todo)}
+                                        className="p-3 text-primary/50 hover:text-primary transition-colors"
+                                    >
+                                        <Edit2 size={20} />
+                                    </button>
+                                    <button
+                                        onClick={() => handleDelete(todo.id)}
+                                        className="p-3 text-red-500/50 hover:text-red-500 transition-colors"
+                                    >
+                                        <Trash2 size={20} />
+                                    </button>
+                                </div>
                             </motion.div>
                         ))
                     )}

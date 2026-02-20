@@ -1,15 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api/api';
-import { Plus, Target, Trash2, Edit2, Calendar, TrendingUp, ChevronLeft } from 'lucide-react';
+import { Plus, Target, Trash2, Edit2, Calendar, TrendingUp, ChevronLeft, Archive, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
+
+const VIEWS = [
+    { id: 'ACTIVE', label: 'الأهداف النشطة' },
+    { id: 'ARCHIVED', label: 'الأرشيف' }
+];
 
 const Goals = () => {
     const [goals, setGoals] = useState([]);
     const [isAdding, setIsAdding] = useState(false);
     const [isAllocating, setIsAllocating] = useState(false);
     const [selectedGoal, setSelectedGoal] = useState(null);
-    const [newGoal, setNewGoal] = useState({ name: '', target: '', deadline: '' });
+    const [view, setView] = useState('ACTIVE');
+    const [newGoal, setNewGoal] = useState({ name: '', target: '', deadline: '', useGrid: false });
     const [allocationAmount, setAllocationAmount] = useState('');
 
     useEffect(() => {
@@ -34,7 +40,7 @@ const Goals = () => {
                 current: 0
             });
             setIsAdding(false);
-            setNewGoal({ name: '', target: '', deadline: '' });
+            setNewGoal({ name: '', target: '', deadline: '', useGrid: false });
             fetchGoals();
         } catch (error) {
             console.error("Error adding goal", error);
@@ -52,6 +58,24 @@ const Goals = () => {
             confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
         } catch (error) {
             console.error("Error allocating to goal", error);
+        }
+    };
+
+    const handleToggleCell = async (goalId, cellId) => {
+        try {
+            await api.toggleGoalCell(goalId, cellId);
+            fetchGoals();
+        } catch (error) {
+            console.error("Error toggling cell", error);
+        }
+    };
+
+    const handleArchive = async (id) => {
+        try {
+            await api.archiveGoal(id);
+            fetchGoals();
+        } catch (error) {
+            console.error("Error archiving goal", error);
         }
     };
 
@@ -77,14 +101,27 @@ const Goals = () => {
                 </button>
             </div>
 
+            {/* View Switcher */}
+            <div className="flex gap-2 mb-8 bg-white/5 p-1.5 rounded-[2rem] border border-white/5">
+                {VIEWS.map(v => (
+                    <button
+                        key={v.id}
+                        onClick={() => setView(v.id)}
+                        className={`flex-1 py-3 rounded-2xl font-bold transition-all ${view === v.id ? 'bg-primary shadow-lg shadow-primary/20' : 'glass opacity-50'}`}
+                    >
+                        {v.label}
+                    </button>
+                ))}
+            </div>
+
             <div className="grid gap-6">
-                {goals.length === 0 ? (
+                {goals.filter(g => view === 'ARCHIVED' ? g.isArchived : !g.isArchived).length === 0 ? (
                     <div className="text-center py-20 glass rounded-[2.5rem] opacity-30 border border-dashed border-white/10">
                         <Target size={48} className="mx-auto mb-4" />
-                        <p>لم تضف أي أهداف بعد</p>
+                        <p>{view === 'ARCHIVED' ? 'لا توجد أهداف مؤرشفة' : 'لم تضف أي أهداف بعد'}</p>
                     </div>
                 ) : (
-                    goals.map((goal) => {
+                    goals.filter(g => view === 'ARCHIVED' ? g.isArchived : !g.isArchived).map((goal) => {
                         const progress = Math.min((goal.current / goal.target) * 100, 100);
                         return (
                             <motion.div
@@ -113,14 +150,23 @@ const Goals = () => {
                                             <Trash2 size={16} />
                                         </button>
                                         <button
-                                            onClick={() => {
-                                                setSelectedGoal(goal);
-                                                setIsAllocating(true);
-                                            }}
-                                            className="bg-primary text-black text-xs font-black px-4 py-2 rounded-xl active:scale-95 transition-all shadow-lg shadow-primary/20"
+                                            onClick={() => handleArchive(goal.id)}
+                                            className="p-2 glass rounded-xl text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                                            title={goal.isArchived ? 'إلغاء الأرشفة' : 'أرشفة'}
                                         >
-                                            ادخار لهذا الهدف
+                                            {goal.isArchived ? <ArrowRight size={16} className="rotate-180" /> : <Archive size={16} />}
                                         </button>
+                                        {!goal.isArchived && (
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedGoal(goal);
+                                                    setIsAllocating(true);
+                                                }}
+                                                className="bg-primary text-black text-xs font-black px-4 py-2 rounded-xl active:scale-95 transition-all shadow-lg shadow-primary/20"
+                                            >
+                                                ادخار لهذا الهدف
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
 
@@ -143,6 +189,28 @@ const Goals = () => {
                                         <span className="text-sm font-black">{goal.current.toLocaleString('en-US')} د.ع</span>
                                     </div>
                                 </div>
+
+                                {goal.useGrid && goal.grid && (
+                                    <div className="mt-8 pt-6 border-t border-white/5">
+                                        <h4 className="text-xs font-bold text-gray-400 mb-4 flex items-center gap-2">
+                                            <TrendingUp size={12} /> شبكة الادخار
+                                        </h4>
+                                        <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                                            {goal.grid.map((cell) => (
+                                                <button
+                                                    key={cell.id}
+                                                    onClick={() => handleToggleCell(goal.id, cell.id)}
+                                                    className={`w-10 h-10 rounded-xl text-[8px] font-bold transition-all duration-300 flex items-center justify-center border ${cell.completed
+                                                        ? 'bg-primary border-primary text-black shadow-lg shadow-primary/20 scale-95'
+                                                        : 'glass border-white/5 text-gray-400 opacity-60 hover:opacity-100'
+                                                        }`}
+                                                >
+                                                    {(cell.amount / 1000)}k
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Progress Elements */}
                                 {progress >= 100 && (
@@ -191,6 +259,19 @@ const Goals = () => {
                                         onChange={(e) => setNewGoal({ ...newGoal, target: e.target.value })}
                                         required
                                     />
+                                </div>
+                                <div className="glass p-5 rounded-[2rem] border border-white/5 flex items-center justify-between">
+                                    <div className="text-right">
+                                        <label className="block text-sm font-bold">تفعيل شبكة الادخار</label>
+                                        <p className="text-[10px] text-gray-500">تقسيم الهدف إلى مبالغ صغيرة (٥، ١٠، ١٥ ألف)</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setNewGoal({ ...newGoal, useGrid: !newGoal.useGrid })}
+                                        className={`w-14 h-8 rounded-full transition-all relative ${newGoal.useGrid ? 'bg-primary' : 'bg-white/10'}`}
+                                    >
+                                        <div className={`absolute top-1 w-6 h-6 rounded-full transition-all ${newGoal.useGrid ? 'right-1 bg-black' : 'right-7 bg-white'}`}></div>
+                                    </button>
                                 </div>
                                 <div className="glass p-5 rounded-[2rem] border border-white/5">
                                     <label className="block text-xs text-gray-500 mb-2 text-right">الموعد المستهدف (اختياري)</label>
