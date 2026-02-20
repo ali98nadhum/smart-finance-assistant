@@ -46,11 +46,14 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
 
+      - name: Rename APK for release
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk android/app/build/outputs/apk/debug/SmartFinance.apk
+
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FinanceApp-Debug-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: app-debug
+          path: android/app/build/outputs/apk/debug/SmartFinance.apk
 
       - name: Create Release
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
@@ -58,11 +61,12 @@ jobs:
         with:
           tag_name: v1.0.${{ github.run_number }}
           name: Release v1.0.${{ github.run_number }}
-          files: android/app/build/outputs/apk/debug/app-debug.apk
+          files: android/app/build/outputs/apk/debug/SmartFinance.apk
           body: |
             تحديث جديد للتطبيق.
-            يمكنك تحميل ملف الـ APK مباشرة من الروابط أدناه.
+            يمكنك تحميل ملف الـ APK مباشرة من قسم Assets أدناه.
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+ Northern
