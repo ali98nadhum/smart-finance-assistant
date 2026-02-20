@@ -145,13 +145,13 @@ const Goals = () => {
                                     <div className="flex gap-2">
                                         <button
                                             onClick={() => handleDeleteGoal(goal.id)}
-                                            className="p-2 glass rounded-xl text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            className="p-2 glass rounded-xl text-red-500 opacity-60 hover:opacity-100 transition-opacity"
                                         >
                                             <Trash2 size={16} />
                                         </button>
                                         <button
                                             onClick={() => handleArchive(goal.id)}
-                                            className="p-2 glass rounded-xl text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                                            className="p-2 glass rounded-xl text-primary opacity-60 hover:opacity-100 transition-opacity"
                                             title={goal.isArchived ? 'إلغاء الأرشفة' : 'أرشفة'}
                                         >
                                             {goal.isArchived ? <ArrowRight size={16} className="rotate-180" /> : <Archive size={16} />}
