@@ -214,7 +214,7 @@ const Todos = () => {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                                <div className="flex items-center gap-1 opacity-60 hover:opacity-100 transition-all duration-300">
                                     <button
                                         onClick={() => handleEdit(todo)}
                                         className="p-3 text-primary/50 hover:text-primary transition-colors"

@@ -7,10 +7,12 @@ export const api = {
     createCard: (data) => Promise.resolve({ data: storageService.createCard(data) }),
     updateCard: (id, data) => Promise.resolve({ data: storageService.updateCard(id, data) }),
     deleteCard: (id) => Promise.resolve({ data: storageService.deleteCard(id) }),
+    topUpCard: (id, amount) => Promise.resolve({ data: storageService.topUpCard(id, amount) }),
 
     // Transactions
-    getTransactions: () => Promise.resolve({ data: storageService.getTransactions() }),
+    getTransactions: (page, limit) => Promise.resolve({ data: storageService.getTransactions(page, limit) }),
     createTransaction: (data) => Promise.resolve({ data: storageService.createTransaction(data) }),
+    deleteTransaction: (id) => Promise.resolve({ data: storageService.deleteTransaction(id) }),
 
     // Budget
     getBudgetStatus: (date) => Promise.resolve({ data: storageService.getBudgetStatus(date) }),
@@ -72,4 +74,9 @@ export const api = {
     // Stats
     getDailyStats: (date) => Promise.resolve({ data: storageService.getDailyStats(date) }),
     getRangeStats: (range) => Promise.resolve({ data: storageService.getRangeStats(range) }),
+
+    // Challenges
+    getChallenges: () => Promise.resolve({ data: storageService.getChallenges() }),
+    createChallenge: (data) => Promise.resolve({ data: storageService.createChallenge(data) }),
+    deleteChallenge: (id) => Promise.resolve({ data: storageService.deleteChallenge(id) }),
 };

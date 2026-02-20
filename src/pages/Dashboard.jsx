@@ -4,7 +4,8 @@ import { Plus, ArrowUpRight, ArrowDownLeft, TrendingUp, Bell, Settings, Edit2, C
 import NotificationsModal from '../components/NotificationsModal';
 import CategoryManager from '../components/CategoryManager';
 import { motion, AnimatePresence } from 'framer-motion';
-import confetti from 'canvas-confetti';
+import CustomModal from '../components/CustomModal';
+
 
 const Dashboard = () => {
     const [cards, setCards] = useState([]);
@@ -12,12 +13,13 @@ const Dashboard = () => {
     const [recentTransactions, setRecentTransactions] = useState([]);
     const [savings, setSavings] = useState(0);
     const [isNotifOpen, setIsNotifOpen] = useState(false);
+    const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '' });
     const [showCategoryManager, setShowCategoryManager] = useState(false);
     const [showPinModal, setShowPinModal] = useState(false);
     const [pinInput, setPinInput] = useState("");
     const [isEditingBudget, setIsEditingBudget] = useState(false);
     const [isAdjustingSavings, setIsAdjustingSavings] = useState(false);
-    const [budgetForm, setBudgetForm] = useState({ dailyLimit: '', date: new Date().toISOString().split('T')[0] });
+    const [budgetForm, setBudgetForm] = useState({ dailyLimit: '', date: new Date().toLocaleDateString('en-CA') });
     const [savingsForm, setSavingsForm] = useState({ amount: '', type: 'SET' });
     const [exchangeData, setExchangeData] = useState({ rate: 1530, lastUpdated: '' });
     const [isConverterOpen, setIsConverterOpen] = useState(false);
@@ -26,7 +28,14 @@ const Dashboard = () => {
     const [currentInsightIndex, setCurrentInsightIndex] = useState(0);
 
     useEffect(() => {
+        // Refresh date on mount and when window gains focus
+        const handleFocus = () => {
+            const today = new Date().toLocaleDateString('en-CA');
+            setBudgetForm(prev => ({ ...prev, date: today }));
+        };
+        window.addEventListener('focus', handleFocus);
         fetchData();
+        return () => window.removeEventListener('focus', handleFocus);
     }, [budgetForm.date]);
 
     const fetchData = async () => {
@@ -59,7 +68,7 @@ const Dashboard = () => {
             });
             setIsEditingBudget(false);
             fetchData();
-            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+
         } catch (error) {
             console.error("Error updating budget", error);
         }
@@ -72,7 +81,7 @@ const Dashboard = () => {
             setIsAdjustingSavings(false);
             setSavingsForm({ amount: '', type: 'SET' });
             fetchData();
-            confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
+
         } catch (error) {
             console.error("Error updating savings", error);
         }
@@ -105,7 +114,11 @@ const Dashboard = () => {
     const submitPin = async (finalPin) => {
         await api.setPin(finalPin || null);
         setShowPinModal(false);
-        alert(finalPin ? "تم تفعيل القفل بنجاح" : "تم إلغاء القفل");
+        setAlertModal({
+            isOpen: true,
+            title: "إعدادات القفل",
+            message: finalPin ? "تم تفعيل القفل بنجاح" : "تم إلغاء القفل"
+        });
     };
 
     return (
@@ -546,6 +559,14 @@ const Dashboard = () => {
                     </div>
                 )}
             </AnimatePresence>
+
+            <CustomModal
+                isOpen={alertModal.isOpen}
+                onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+                title={alertModal.title}
+                message={alertModal.message}
+                type="success"
+            />
         </div>
     );
 };

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api/api';
 import { Plus, Users, CheckCircle, Clock, ChevronDown, ChevronUp, Wallet, ArrowRight, Landmark, Edit2, Check, X } from 'lucide-react';
-import confetti from 'canvas-confetti';
+
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Debts = () => {
@@ -41,7 +41,7 @@ const Debts = () => {
             setIsAdding(false);
             setNewDebt({ amount: '', personName: '', type: 'OWED_BY_ME', notes: '' });
             fetchDebts();
-            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+
         } catch (error) {
             console.error("Error creating debt", error);
         }
@@ -55,7 +55,7 @@ const Debts = () => {
             setIsAdjustingStore(false);
             setStoreForm({ amount: '', type: 'SET', debtId: null });
             fetchDebts();
-            confetti({ particleCount: 50, spread: 50, origin: { y: 0.8 }, colors: ['#f59e0b'] });
+
         } catch (error) {
             console.error("Error updating store amount", error);
         }
@@ -67,7 +67,7 @@ const Debts = () => {
             await api.addPayment({ debtId, amount: parseFloat(paymentAmount) });
             setPaymentAmount('');
             fetchDebts();
-            confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 }, colors: ['#3b82f6', '#10b981'] });
+
         } catch (error) {
             console.error("Error adding payment", error);
         }

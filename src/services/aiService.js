@@ -2,7 +2,7 @@ import { storageService } from './storageService';
 
 export const aiService = {
     getInsights: () => {
-        const txs = storageService.getTransactions();
+        const { transactions: txs } = storageService.getTransactions(1, 1000);
         const budget = storageService.getBudgetStatus();
         const goals = storageService.getGoals();
         const savings = storageService.getSavings().savings;

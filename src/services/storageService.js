@@ -11,6 +11,7 @@ const STORAGE_KEYS = {
     NOTIFICATIONS: 'finance_notifications',
     EXCHANGE_RATE: 'finance_exchange_rate',
     GOALS: 'finance_goals',
+    CHALLENGES: 'finance_challenges',
     SECURITY_PIN: 'finance_security_pin'
 };
 
@@ -92,15 +93,25 @@ export const storageService = {
     },
 
     // Transactions with relational logic
-    getTransactions: () => {
+    getTransactions: (page = 1, limit = 10) => {
         const txs = storage.get(STORAGE_KEYS.TRANSACTIONS);
         const cats = storage.get(STORAGE_KEYS.CATEGORIES);
         const cards = storage.get(STORAGE_KEYS.CARDS);
-        return txs.map(tx => ({
+
+        const sorted = txs.map(tx => ({
             ...tx,
             category: cats.find(c => c.id === tx.categoryId) || null,
             card: cards.find(c => c.id === tx.cardId) || null
         })).sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
+
+        const start = (page - 1) * limit;
+        const paged = sorted.slice(start, start + limit);
+
+        return {
+            transactions: paged,
+            hasMore: sorted.length > start + limit,
+            total: sorted.length
+        };
     },
 
     createTransaction: (data) => {
@@ -114,6 +125,30 @@ export const storageService = {
             cards[cardIndex].balance += (data.type === 'INCOME' ? amount : -amount);
             storage.set(STORAGE_KEYS.CARDS, cards);
         }
+
+        // Check Challenges - if transaction is an expense in a category being "blocked"
+        if (data.type === 'EXPENSE') {
+            const challenges = storage.get(STORAGE_KEYS.CHALLENGES);
+            const activeChallenges = challenges.filter(c => c.status === 'ACTIVE');
+            let updated = false;
+
+            activeChallenges.forEach(c => {
+                if (c.type === 'NO_SPENDING' && c.categoryId === data.categoryId) {
+                    c.status = 'FAILED';
+                    updated = true;
+                    // Add notification
+                    storageService.save(STORAGE_KEYS.NOTIFICATIONS, {
+                        title: 'تحدي فشل!',
+                        message: `لقد صرفت على "${c.categoryName}"، مما أدى لفشل تحدي "${c.name}". حاول مرة أخرى!`,
+                        type: 'CHALLENGE_FAILED',
+                        isRead: false
+                    });
+                }
+            });
+
+            if (updated) storage.set(STORAGE_KEYS.CHALLENGES, challenges);
+        }
+
         return tx;
     },
 
@@ -223,12 +258,32 @@ export const storageService = {
     // Cards
     getCards: () => storage.get(STORAGE_KEYS.CARDS),
     createCard: (data) => storageService.save(STORAGE_KEYS.CARDS, { ...data, balance: parseFloat(data.balance || 0) }),
+    deleteTransaction: (id) => {
+        const transactions = storage.get(STORAGE_KEYS.TRANSACTIONS);
+        const index = transactions.findIndex(t => t.id === id);
+        if (index !== -1) {
+            transactions.splice(index, 1);
+            storage.set(STORAGE_KEYS.TRANSACTIONS, transactions);
+            return true;
+        }
+        return false;
+    },
     updateCard: (id, updates) => storageService.update(STORAGE_KEYS.CARDS, id, updates),
     deleteCard: (id) => {
         const cards = storage.get(STORAGE_KEYS.CARDS);
         if (cards.length <= 1) return false; // Prevent deleting the last card
         storageService.delete(STORAGE_KEYS.CARDS, id);
         return true;
+    },
+    topUpCard: (id, amount) => {
+        const cards = storage.get(STORAGE_KEYS.CARDS);
+        const index = cards.findIndex(c => c.id === id);
+        if (index !== -1) {
+            cards[index].balance += parseFloat(amount || 0);
+            storage.set(STORAGE_KEYS.CARDS, cards);
+            return cards[index];
+        }
+        return null;
     },
 
     // Debts
@@ -420,6 +475,59 @@ export const storageService = {
         }
         return null;
     },
+
+    // Challenges
+    getChallenges: () => {
+        const challenges = storage.get(STORAGE_KEYS.CHALLENGES);
+        const now = new Date();
+        let updated = false;
+
+        challenges.forEach(c => {
+            if (c.status === 'ACTIVE') {
+                const endDate = new Date(c.endDate);
+                if (now > endDate) {
+                    c.status = 'COMPLETED';
+                    updated = true;
+                    // Add notification
+                    storageService.save(STORAGE_KEYS.NOTIFICATIONS, {
+                        title: 'تهانينا! اكتمل التحدي',
+                        message: `مبروك! لقد أكملت تحدي "${c.name}" بنجاح. استمر بطل! 🏆`,
+                        type: 'CHALLENGE_SUCCESS',
+                        isRead: false
+                    });
+                } else {
+                    // Update current day progress
+                    const start = new Date(c.startDate);
+                    const diffTime = Math.abs(now - start);
+                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                    if (c.daysCompleted !== diffDays) {
+                        c.daysCompleted = diffDays;
+                        updated = true;
+                    }
+                }
+            }
+        });
+
+        if (updated) storage.set(STORAGE_KEYS.CHALLENGES, challenges);
+        return challenges;
+    },
+
+    createChallenge: (data) => {
+        const startDate = new Date();
+        const duration = parseInt(data.duration || 7);
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + duration);
+
+        return storageService.save(STORAGE_KEYS.CHALLENGES, {
+            ...data,
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+            status: 'ACTIVE',
+            daysCompleted: 0
+        });
+    },
+
+    deleteChallenge: (id) => storageService.delete(STORAGE_KEYS.CHALLENGES, id),
 
     // Security
     getPin: () => storage.get(STORAGE_KEYS.SECURITY_PIN, null),
