@@ -206,7 +206,7 @@ export const storageService = {
 
     // Stats
     getDailyStats: (dateStr) => {
-        const txs = storageService.getTransactions();
+        const { transactions: txs } = storageService.getTransactions(1, 1000);
         const date = dateStr ? dateStr.split('T')[0] : new Date().toISOString().split('T')[0];
         const dayTxs = txs.filter(tx => tx.date && tx.date.startsWith(date) && tx.type === 'EXPENSE');
 
@@ -223,7 +223,7 @@ export const storageService = {
     },
 
     getRangeStats: (range) => {
-        const txs = storageService.getTransactions();
+        const { transactions: txs } = storageService.getTransactions(1, 1000);
         let days = range === 'weekly' ? 7 : 30;
         const now = new Date();
         now.setHours(0, 0, 0, 0);

@@ -50,7 +50,7 @@ const Dashboard = () => {
             ]);
             setCards(cardsRes.data);
             setBudgetStatus(budgetRes.data);
-            setRecentTransactions(transRes.data.slice(0, 5));
+            setRecentTransactions(transRes.data.transactions.slice(0, 5));
             setSavings(savingsRes.data.savings);
             setExchangeData(exchangeRes.data);
             setAiInsights(aiRes.data);
