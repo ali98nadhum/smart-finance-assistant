@@ -57,5 +57,90 @@ export const aiService = {
         }
 
         return insights;
+    },
+
+    getStatsInsights: (range, total, categories, timeline) => {
+        const insights = [];
+        const topCat = [...categories].sort((a, b) => b.amount - a.amount)[0];
+        const monthName = new Intl.DateTimeFormat('ar-IQ', { month: 'long' }).format(new Date());
+
+        if (range === 'weekly') {
+            if (total > 350000) {
+                insights.push({
+                    title: "تنبيه مصاريف",
+                    text: `صرفك هذا الأسبوع مرتفع جداً (${total.toLocaleString()} د.ع). تحتاج مراجعة ضرورية لمصاريفك. ⚠️`,
+                    type: 'WARNING'
+                });
+            } else if (total > 200000) {
+                insights.push({
+                    title: "ملاحظة أسبوعية",
+                    text: `صرفك متوسط إلى مرتفع هذا الأسبوع. حاول توازن الأمور بالأيام الجاية. 📉`,
+                    type: 'INFO'
+                });
+            } else {
+                insights.push({
+                    title: "إنجاز أسبوعي",
+                    text: "عاشت إيدك! صرفك متوازن ومثالي هذا الأسبوع. استمر! ✨",
+                    type: 'SUCCESS'
+                });
+            }
+
+            if (topCat && topCat.amount > total * 0.45) {
+                insights.push({
+                    title: "تحليل الفئات",
+                    text: `بد تصرف مبالغ كبيرة على "${topCat.name}". جرب تراقب هذا الجزء لتقليل الهدر. 🧐`,
+                    type: 'TIP'
+                });
+            }
+        } else {
+            // Monthly Insights - More nuanced thresholds
+            if (total > 1200000) {
+                insights.push({
+                    title: `تحذير شهر ${monthName}`,
+                    text: `مصاريفك وصلت لمستوى حرج جداً (${total.toLocaleString()} د.ع). لازم تعدل ميزانيتك فوراً! 🚨`,
+                    type: 'WARNING'
+                });
+            } else if (total > 850000) {
+                insights.push({
+                    title: `تقرير شهر ${monthName}`,
+                    text: `صرفك لهذا الشهر مرتفع (${total.toLocaleString()} د.ع). راجع قائمة المصاريف لتشوف وين تقدر توفر. 📊`,
+                    type: 'WARNING'
+                });
+            } else if (total > 500000) {
+                insights.push({
+                    title: `إحصائيات ${monthName}`,
+                    text: `صرفك في المسار المتوسط. ببعض الجهد تقدر تزيد من ادخارك لنهاية الشهر. 👍`,
+                    type: 'INFO'
+                });
+            } else {
+                insights.push({
+                    title: `نجاح في ${monthName}`,
+                    text: `أداء مالي ممتاز لهذا الشهر! استمر بهذا الانضباط لخدمة أهدافك. 🏆`,
+                    type: 'SUCCESS'
+                });
+            }
+
+            // Category focus for monthly
+            const foodCat = categories.find(c => c.name === 'طعام');
+            if (foodCat && foodCat.amount > 250000) {
+                insights.push({
+                    title: "نصيحة توفير",
+                    text: "مبلغ الأكل والمطاعم مرتفع هذا الشهر. الطبخ بالبيت هو الحل الأسرع لزيادة ادخارك. 🍳",
+                    type: 'TIP'
+                });
+            }
+        }
+
+        // Comparison Logic (Simple comparison with average day)
+        const avgDay = total / (timeline.length || 1);
+        if (range === 'weekly') {
+            insights.push({
+                title: "مقارنة سريعة",
+                text: `معدل صرفك اليومي هذا الأسبوع هو ${Math.round(avgDay).toLocaleString()} د.ع.`,
+                type: 'INFO'
+            });
+        }
+
+        return insights;
     }
 };

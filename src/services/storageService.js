@@ -224,11 +224,23 @@ export const storageService = {
 
     getRangeStats: (range) => {
         const { transactions: txs } = storageService.getTransactions(1, 1000);
-        let days = range === 'weekly' ? 7 : 30;
         const now = new Date();
         now.setHours(0, 0, 0, 0);
-        const startDate = new Date(now);
-        startDate.setDate(startDate.getDate() - days + 1);
+
+        let startDate;
+        let days;
+
+        if (range === 'weekly') {
+            days = 7;
+            startDate = new Date(now);
+            startDate.setDate(startDate.getDate() - days + 1);
+        } else {
+            // Calendar month view: start from the 1st of the current month
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            // Show the full month on the timeline
+            const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            days = endDate.getDate();
+        }
 
         const rangeTxs = txs.filter(tx => tx.type === 'EXPENSE' && new Date(tx.date) >= startDate);
 
@@ -305,6 +317,7 @@ export const storageService = {
     }),
     updateDebtStatus: (id, status) => storageService.update(STORAGE_KEYS.DEBTS, id, { status }),
     updateDebt: (id, updates) => storageService.update(STORAGE_KEYS.DEBTS, id, updates),
+    deleteDebt: (id) => storageService.delete(STORAGE_KEYS.DEBTS, id),
     archiveDebt: (id) => {
         const debts = storage.get(STORAGE_KEYS.DEBTS);
         const index = debts.findIndex(d => d.id === id);
@@ -396,35 +409,40 @@ export const storageService = {
 
         if (data.useGrid) {
             grid = [];
-            let remaining = target;
+            if (data.type === 'COUNTDOWN') {
+                const startDate = new Date();
+                const endDate = new Date(data.deadline);
+                const diffTime = Math.abs(endDate - startDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-            // Always use a mix of denominations for a "Challenge Box" feel
-            const denoms = [15000, 10000, 5000, 2000, 1000];
-
-            while (remaining > 0) {
-                // Filter denominations that fit in the remaining amount
-                const possible = denoms.filter(d => d <= remaining);
-
-                let amount;
-                if (possible.length > 0) {
-                    // Randomly pick from all possible denominations for maximum variety
-                    amount = possible[Math.floor(Math.random() * possible.length)];
-                } else {
-                    amount = remaining;
+                for (let i = 1; i <= diffDays; i++) {
+                    grid.push({ id: generateId(), day: i, completed: false, amount: 0 });
                 }
+            } else {
+                let remaining = target;
+                // Always use a mix of denominations for a "Challenge Box" feel
+                const denoms = [15000, 10000, 5000, 2000, 1000];
 
-                grid.push({ id: generateId(), amount, completed: false });
-                remaining -= amount;
+                while (remaining > 0) {
+                    const possible = denoms.filter(d => d <= remaining);
+                    let amount;
+                    if (possible.length > 0) {
+                        amount = possible[Math.floor(Math.random() * possible.length)];
+                    } else {
+                        amount = remaining;
+                    }
+                    grid.push({ id: generateId(), amount, completed: false });
+                    remaining -= amount;
+                }
+                grid = grid.sort(() => Math.random() - 0.5);
             }
-
-            // Shuffle grid for better psychological distribution
-            grid = grid.sort(() => Math.random() - 0.5);
         }
 
         return storageService.save(STORAGE_KEYS.GOALS, {
             ...data,
-            target,
-            current: parseFloat(data.current || 0),
+            target: data.type === 'COUNTDOWN' ? 0 : target,
+            current: data.type === 'COUNTDOWN' ? 0 : parseFloat(data.current || 0),
+            startDate: data.type === 'COUNTDOWN' ? new Date().toISOString() : null,
             deadline: data.deadline || null,
             useGrid: !!data.useGrid,
             isArchived: false,
@@ -463,10 +481,15 @@ export const storageService = {
                 cell.completed = !cell.completed;
 
                 // Update total current amount
-                if (cell.completed) {
-                    goals[index].current += cell.amount;
+                if (goals[index].type === 'COUNTDOWN') {
+                    // For countdown, current could represent number of completed days
+                    goals[index].current = goals[index].grid.filter(c => c.completed).length;
                 } else {
-                    goals[index].current -= cell.amount;
+                    if (cell.completed) {
+                        goals[index].current += cell.amount;
+                    } else {
+                        goals[index].current -= cell.amount;
+                    }
                 }
 
                 storage.set(STORAGE_KEYS.GOALS, goals);

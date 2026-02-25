@@ -4,7 +4,7 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, LineChart, Line, AreaChart, Area
 } from 'recharts';
-import { Calendar, Clock, PieChart as PieIcon, TrendingUp, ChevronRight, ChevronLeft, Zap, Info } from 'lucide-react';
+import { Calendar, Clock, PieChart as PieIcon, TrendingUp, ChevronRight, ChevronLeft, Zap, Info, Trophy } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
@@ -13,6 +13,7 @@ const Statistics = () => {
     const [range, setRange] = useState('weekly'); // daily, weekly, monthly
     const [dailyData, setDailyData] = useState({ hourly: [], byCategory: [] });
     const [rangeData, setRangeData] = useState({ timeline: [], byCategory: [] });
+    const [statsInsights, setStatsInsights] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -28,6 +29,15 @@ const Statistics = () => {
             } else {
                 const res = await api.getRangeStats(range);
                 setRangeData(res.data);
+
+                // Fetch dynamic insights
+                const insightsRes = await api.getStatsInsights(
+                    range,
+                    res.data.byCategory.reduce((acc, curr) => acc + curr.amount, 0),
+                    res.data.byCategory,
+                    res.data.timeline
+                );
+                setStatsInsights(insightsRes.data);
             }
         } catch (error) {
             console.error("Error fetching stats", error);
@@ -39,6 +49,9 @@ const Statistics = () => {
     const currentByCat = (range === 'daily' ? dailyData.byCategory : rangeData.byCategory) || [];
     const totalSpent = currentByCat.reduce((acc, curr) => acc + curr.amount, 0);
     const topCategory = [...currentByCat].sort((a, b) => b.amount - a.amount)[0];
+
+    // Arabic Month Name
+    const currentMonthName = new Intl.DateTimeFormat('ar-IQ', { month: 'long' }).format(new Date());
 
     return (
         <div className="pb-32 pt-8 px-5" dir="rtl">
@@ -95,7 +108,7 @@ const Statistics = () => {
                                 <TrendingUp size={24} className="text-primary" />
                                 نبضات الصرف
                             </h3>
-                            <p className="text-xs text-gray-500 mb-8">حركة السيولة خلال {range === 'weekly' ? 'الأيام السبعة الماضية' : 'الشهر الحالي'}</p>
+                            <p className="text-xs text-gray-500 mb-8">حركة السيولة خلال {range === 'weekly' ? 'الأيام السبعة الماضية' : `شهر ${currentMonthName}`}</p>
 
                             <div className="h-64 w-full">
                                 <ResponsiveContainer width="100%" height="100%">
@@ -189,25 +202,42 @@ const Statistics = () => {
                         )}
                     </div>
 
-                    {/* AI Insights Concept */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        className="bg-gradient-to-r from-primary/20 to-blue-500/20 p-6 rounded-[2.5rem] border border-primary/20 flex gap-4 items-center"
-                    >
-                        <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-black shadow-lg shadow-primary/30">
-                            <Zap size={24} />
-                        </div>
-                        <div>
-                            <h4 className="font-black text-sm text-primary">نصيحة الذكاء الاصطناعي</h4>
-                            <p className="text-xs text-white/70 leading-relaxed mt-1">
-                                {totalSpent > 100000
-                                    ? "صرفك على قسم الطعام ارتفع بنسبة 15٪ هذا الأسبوع. ربما تود تقليل الطلبات الخارجية!"
-                                    : "أنت تقوم بعمل رائع في التوفير هذا الأسبوع! استمر على هذا المنوال."}
-                            </p>
-                        </div>
-                    </motion.div>
+                    {/* AI Insights Section */}
+                    <div className="space-y-4">
+                        <AnimatePresence mode="wait">
+                            {statsInsights.map((insight, idx) => (
+                                <motion.div
+                                    key={`${range}-${idx}`}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    transition={{ delay: idx * 0.1 }}
+                                    className={`p-6 rounded-[2.5rem] border flex gap-4 items-center ${insight.type === 'WARNING' ? 'bg-red-500/10 border-red-500/20' :
+                                        insight.type === 'SUCCESS' ? 'bg-green-500/10 border-green-500/20' :
+                                            'bg-gradient-to-r from-primary/10 to-blue-500/10 border-primary/20'
+                                        }`}
+                                >
+                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-black shadow-lg ${insight.type === 'WARNING' ? 'bg-red-500 shadow-red-500/30' :
+                                        insight.type === 'SUCCESS' ? 'bg-green-500 shadow-green-500/30' :
+                                            'bg-primary shadow-primary/30'
+                                        }`}>
+                                        {insight.type === 'WARNING' ? <Info size={24} /> :
+                                            insight.type === 'SUCCESS' ? <Trophy size={24} /> :
+                                                <Zap size={24} />}
+                                    </div>
+                                    <div>
+                                        <h4 className={`font-black text-sm ${insight.type === 'WARNING' ? 'text-red-400' :
+                                            insight.type === 'SUCCESS' ? 'text-green-400' :
+                                                'text-primary'
+                                            }`}>{insight.title}</h4>
+                                        <p className="text-xs text-white/70 leading-relaxed mt-1">
+                                            {insight.text}
+                                        </p>
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </AnimatePresence>
+                    </div>
                 </div>
             )}
         </div>

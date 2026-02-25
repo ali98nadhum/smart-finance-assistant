@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api/api';
-import { Plus, Users, CheckCircle, Clock, ChevronDown, ChevronUp, Wallet, ArrowRight, Landmark, Edit2, Check, X } from 'lucide-react';
+import { Plus, Users, CheckCircle, Clock, ChevronDown, ChevronUp, Wallet, ArrowRight, Landmark, Edit2, Check, X, Trash2 } from 'lucide-react';
 
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -14,6 +14,8 @@ const Debts = () => {
     const [newDebt, setNewDebt] = useState({ amount: '', personName: '', type: 'OWED_BY_ME', notes: '' });
     const [editingNoteId, setEditingNoteId] = useState(null);
     const [editedNote, setEditedNote] = useState('');
+    const [editingDebtId, setEditingDebtId] = useState(null);
+    const [editForm, setEditForm] = useState({ personName: '', amount: '', notes: '' });
     const [view, setView] = useState('ACTIVE'); // 'ACTIVE' or 'ARCHIVED'
 
     const VIEWS = [
@@ -83,12 +85,36 @@ const Debts = () => {
         }
     };
 
+    const handleUpdateDebt = async (debtId) => {
+        try {
+            await api.updateDebt(debtId, {
+                personName: editForm.personName,
+                amount: parseFloat(editForm.amount),
+                notes: editForm.notes
+            });
+            setEditingDebtId(null);
+            fetchDebts();
+        } catch (error) {
+            console.error("Error updating debt", error);
+        }
+    };
+
     const handleArchive = async (debtId) => {
         try {
             await api.archiveDebt(debtId);
             fetchDebts();
         } catch (error) {
             console.error("Error archiving debt", error);
+        }
+    };
+
+    const handleDeleteDebt = async (debtId) => {
+        if (!window.confirm("هل أنت متأكد من مسح هذا الدين نهائياً؟")) return;
+        try {
+            await api.deleteDebt(debtId);
+            fetchDebts();
+        } catch (error) {
+            console.error("Error deleting debt", error);
         }
     };
 
@@ -149,7 +175,25 @@ const Debts = () => {
                                                     <Users size={24} />
                                                 </div>
                                                 <div>
-                                                    <h4 className="font-black text-xl">{debt.personName}</h4>
+                                                    <div className="flex items-center gap-2">
+                                                        <h4 className="font-black text-xl">{debt.personName}</h4>
+                                                        {!debt.isArchived && (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setEditingDebtId(debt.id);
+                                                                    setEditForm({
+                                                                        personName: debt.personName,
+                                                                        amount: debt.amount,
+                                                                        notes: debt.notes || ''
+                                                                    });
+                                                                }}
+                                                                className="p-1 text-gray-500 hover:text-primary transition-colors"
+                                                            >
+                                                                <Edit2 size={14} />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                     <p className="text-xs text-gray-400 mt-1">
                                                         {debt.type === 'OWED_BY_ME' ? 'أنا مدين له' : 'هو مدين لي'}
                                                     </p>
@@ -276,6 +320,17 @@ const Debts = () => {
                                                     >
                                                         <ArrowRight size={18} className={debt.isArchived ? 'rotate-180' : ''} />
                                                         {debt.isArchived ? 'إلغاء الأرشفة' : 'أرشفة الدين'}
+                                                    </button>
+
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDeleteDebt(debt.id);
+                                                        }}
+                                                        className="w-14 p-4 rounded-2xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center"
+                                                        title="مسح الدين"
+                                                    >
+                                                        <Trash2 size={18} />
                                                     </button>
                                                 </div>
 
@@ -424,6 +479,72 @@ const Debts = () => {
                                     <button
                                         onClick={() => setIsAdjustingStore(false)}
                                         className="flex-1 glass p-4 rounded-2xl font-bold opacity-50"
+                                    >
+                                        إلغاء
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Edit Debt Modal */}
+            <AnimatePresence>
+                {editingDebtId && (
+                    <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[85] flex items-end" dir="rtl">
+                        <motion.div
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            className="bg-dark-lighter w-full p-8 rounded-t-[3rem] shadow-2xl border-t border-white/10"
+                        >
+                            <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto mb-8"></div>
+                            <h3 className="text-2xl font-black mb-8 text-right">تعديل بيانات الدين</h3>
+                            <div className="space-y-6">
+                                <div className="space-y-4">
+                                    <div className="glass p-4 rounded-2xl border border-white/5">
+                                        <label className="block text-xs text-gray-500 mb-2 text-right">اسم الشخص</label>
+                                        <input
+                                            type="text"
+                                            className="w-full bg-transparent outline-none font-bold text-right"
+                                            placeholder="مثال: علي محمد"
+                                            value={editForm.personName}
+                                            onChange={(e) => setEditForm({ ...editForm, personName: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="glass p-4 rounded-2xl border border-white/5">
+                                        <label className="block text-xs text-gray-500 mb-2 text-right">المبلغ الإجمالي (د.ع)</label>
+                                        <input
+                                            type="number"
+                                            className="w-full bg-transparent text-2xl font-bold outline-none text-right"
+                                            placeholder="0"
+                                            value={editForm.amount}
+                                            onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="glass p-4 rounded-2xl border border-white/5">
+                                        <label className="block text-xs text-gray-500 mb-2 text-right">ملاحظات</label>
+                                        <textarea
+                                            className="w-full bg-transparent outline-none font-bold text-sm resize-none text-right"
+                                            placeholder="أضف أي تفاصيل إضافية هنا..."
+                                            rows="3"
+                                            value={editForm.notes}
+                                            onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex gap-4 pt-6">
+                                    <button
+                                        onClick={() => handleUpdateDebt(editingDebtId)}
+                                        className="flex-[2] bg-primary p-5 rounded-3xl font-black shadow-xl shadow-primary/20 active:scale-95 transition-transform"
+                                    >
+                                        حفظ التغييرات
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setEditingDebtId(null)}
+                                        className="flex-1 glass p-5 rounded-3xl font-bold opacity-50"
                                     >
                                         إلغاء
                                     </button>

@@ -23,6 +23,7 @@ export const api = {
     createDebt: (data) => Promise.resolve({ data: storageService.createDebt(data) }),
     updateDebtStatus: (id, status) => Promise.resolve({ data: storageService.updateDebtStatus(id, status) }),
     updateDebt: (id, data) => Promise.resolve({ data: storageService.updateDebt(id, data) }),
+    deleteDebt: (id) => Promise.resolve({ data: storageService.deleteDebt(id) }),
     archiveDebt: (id) => Promise.resolve({ data: storageService.archiveDebt(id) }),
 
     // Todos
@@ -61,6 +62,8 @@ export const api = {
 
     // AI Insights
     getAIInsights: () => Promise.resolve({ data: aiService.getInsights() }),
+    getStatsInsights: (range, total, categories, timeline) =>
+        Promise.resolve({ data: aiService.getStatsInsights(range, total, categories, timeline) }),
 
     // Debt Payments
     getPayments: (debtId) => Promise.resolve({ data: storageService.getPayments(debtId) }),

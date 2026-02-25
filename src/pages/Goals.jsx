@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api/api';
-import { Plus, Target, Trash2, Edit2, Calendar, TrendingUp, ChevronLeft, Archive, ArrowRight, Flame, Trophy, Zap, Ban, Coffee } from 'lucide-react';
+import { Plus, Target, Trash2, Edit2, Calendar, TrendingUp, ChevronLeft, Archive, ArrowRight, Flame, Trophy, Zap, Ban, Coffee, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CustomModal from '../components/CustomModal';
+import confetti from 'canvas-confetti';
 
 
 const VIEWS = [
@@ -17,6 +18,16 @@ const CHALLENGE_PRESETS = [
     { id: '3', name: 'توفير ترفيهي', type: 'NO_SPENDING', categoryId: '6', categoryName: 'ترفيه', duration: 5, icon: Ban, color: '#8b5cf6', description: 'وفر مبلغ الترفيه لمدة ٥ أيام.' },
 ];
 
+const MOTIVATIONAL_PHRASES = [
+    "عاش، يوم جديد وإنجاز جديد! 💪",
+    "بطل، قربت توصل للهدف! 🚀",
+    "استمر، الخطوات الصغيرة تسوي فرق كبير! ✨",
+    "كل يوم يمر هو خطوة أقرب للنجاح! 🏆",
+    "عاشت إيدك، الالتزام هو سر النجاح! 🌟",
+    "يوم ثاني وتحدي ثاني، گدها! 🔥",
+    "قربت النهاية، لا توقف! 🏁"
+];
+
 const Goals = () => {
     const [goals, setGoals] = useState([]);
     const [challenges, setChallenges] = useState([]);
@@ -26,7 +37,7 @@ const Goals = () => {
     const [selectedGoal, setSelectedGoal] = useState(null);
     const [view, setView] = useState('ACTIVE');
     const [modal, setModal] = useState({ isOpen: false, id: null });
-    const [newGoal, setNewGoal] = useState({ name: '', target: '', deadline: '', useGrid: false });
+    const [newGoal, setNewGoal] = useState({ name: '', target: '', deadline: '', useGrid: false, type: 'SAVINGS' });
     const [allocationAmount, setAllocationAmount] = useState('');
     const [categories, setCategories] = useState([]);
     const [isCustom, setIsCustom] = useState(false);
@@ -111,6 +122,24 @@ const Goals = () => {
 
     const handleToggleCell = async (goalId, cellId) => {
         try {
+            const goal = goals.find(g => g.id === goalId);
+            const cell = goal?.grid?.find(c => c.id === cellId);
+
+            // Add haptic feedback
+            if (window.navigator.vibrate) {
+                window.navigator.vibrate([50, 30, 50]);
+            }
+
+            // If marking as completed, trigger confetti
+            if (!cell?.completed) {
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    colors: ['#f59e0b', '#fbbf24', '#ffffff']
+                });
+            }
+
             await api.toggleGoalCell(goalId, cellId);
             fetchData();
         } catch (error) {
@@ -252,7 +281,25 @@ const Goals = () => {
                         </div>
                     ) : (
                         goals.filter(g => view === 'ARCHIVED' ? g.isArchived : !g.isArchived).map((goal) => {
-                            const progress = Math.min((goal.current / goal.target) * 100, 100);
+                            const isCountdown = goal.type === 'COUNTDOWN';
+                            const progress = isCountdown
+                                ? (goal.grid ? (goal.grid.filter(c => c.completed).length / goal.grid.length) * 100 : 0)
+                                : Math.min((goal.current / goal.target) * 100, 100);
+
+                            const randomPhrase = MOTIVATIONAL_PHRASES[Math.floor(Math.random() * MOTIVATIONAL_PHRASES.length)];
+
+                            // Calculate real elapsed days
+                            const getElapsedDays = (startStr) => {
+                                if (!startStr) return 0;
+                                const start = new Date(startStr);
+                                start.setHours(0, 0, 0, 0);
+                                const now = new Date();
+                                now.setHours(0, 0, 0, 0);
+                                const diff = now - start;
+                                return Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
+                            };
+                            const elapsedDays = isCountdown ? getElapsedDays(goal.startDate || goal.createdAt) : 0;
+
                             return (
                                 <motion.div
                                     layout
@@ -286,7 +333,7 @@ const Goals = () => {
                                             >
                                                 {goal.isArchived ? <ArrowRight size={16} className="rotate-180" /> : <Archive size={16} />}
                                             </button>
-                                            {!goal.isArchived && (
+                                            {!goal.isArchived && !isCountdown && (
                                                 <button
                                                     onClick={() => {
                                                         setSelectedGoal(goal);
@@ -302,42 +349,87 @@ const Goals = () => {
 
                                     <div className="space-y-3">
                                         <div className="flex justify-between text-sm">
-                                            <span className="text-gray-400">الهدف: {goal.target.toLocaleString('en-US')} د.ع</span>
+                                            <span className="text-gray-400">
+                                                {isCountdown ? `المدة: ${goal.grid?.length || 0} أيام` : `الهدف: ${goal.target.toLocaleString('en-US')} د.ع`}
+                                            </span>
                                             <span className="font-bold text-primary">{Math.round(progress)}%</span>
                                         </div>
                                         <div className="w-full bg-white/5 h-4 rounded-full overflow-hidden border border-white/5 p-0.5">
                                             <motion.div
                                                 initial={{ width: 0 }}
                                                 animate={{ width: `${progress}%` }}
-                                                className="h-full bg-gradient-to-l from-primary to-blue-500 rounded-full relative"
+                                                className={`h-full bg-gradient-to-l ${isCountdown ? 'from-orange-500 to-yellow-500' : 'from-primary to-blue-500'} rounded-full relative`}
                                             >
                                                 <div className="absolute top-0 right-0 bottom-0 w-8 bg-white/20 blur-sm"></div>
                                             </motion.div>
                                         </div>
-                                        <div className="text-left">
-                                            <span className="text-xs text-gray-500">تم توفير: </span>
-                                            <span className="text-sm font-black">{goal.current.toLocaleString('en-US')} د.ع</span>
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <span className="text-xs text-gray-500">{isCountdown ? 'المتبقي: ' : 'تم توفير: '}</span>
+                                                <span className="text-sm font-black">
+                                                    {isCountdown ? `${(goal.grid?.length || 0) - goal.current} يوم` : `${goal.current.toLocaleString('en-US')} د.ع`}
+                                                </span>
+                                            </div>
+                                            {isCountdown && progress > 0 && progress < 100 && (
+                                                <p className="text-[10px] text-primary font-bold animate-pulse">{randomPhrase}</p>
+                                            )}
                                         </div>
                                     </div>
 
                                     {goal.useGrid && goal.grid && (
                                         <div className="mt-8 pt-6 border-t border-white/5">
                                             <h4 className="text-xs font-bold text-gray-400 mb-4 flex items-center gap-2">
-                                                <TrendingUp size={12} /> شبكة الادخار
+                                                <TrendingUp size={12} /> {isCountdown ? 'متابعة الأيام' : 'شبكة الادخار'}
                                             </h4>
-                                            <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                                                {goal.grid.map((cell) => (
-                                                    <button
-                                                        key={cell.id}
-                                                        onClick={() => handleToggleCell(goal.id, cell.id)}
-                                                        className={`w-10 h-10 rounded-xl text-[8px] font-bold transition-all duration-300 flex items-center justify-center border ${cell.completed
-                                                            ? 'bg-primary border-primary text-black shadow-lg shadow-primary/20 scale-95'
-                                                            : 'glass border-white/5 text-gray-400 opacity-60 hover:opacity-100'
-                                                            }`}
-                                                    >
-                                                        {(cell.amount / 1000)}k
-                                                    </button>
-                                                ))}
+                                            <div className="flex flex-wrap gap-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                                                {goal.grid.map((cell) => {
+                                                    const isMissed = isCountdown && !cell.completed && cell.day < elapsedDays;
+                                                    const isToday = isCountdown && cell.day === elapsedDays;
+
+                                                    return (
+                                                        <motion.button
+                                                            key={cell.id}
+                                                            whileTap={{ scale: 0.9 }}
+                                                            onClick={() => handleToggleCell(goal.id, cell.id)}
+                                                            className={`w-11 h-11 rounded-xl text-[9px] font-bold transition-all duration-500 flex flex-col items-center justify-center border relative overflow-hidden ${cell.completed
+                                                                ? (isCountdown ? 'bg-orange-500 border-orange-500 text-white shadow-xl shadow-orange-500/30' : 'bg-primary border-primary text-black shadow-lg shadow-primary/20')
+                                                                : isMissed
+                                                                    ? 'bg-red-500/20 border-red-500/50 text-red-500'
+                                                                    : isToday
+                                                                        ? 'bg-primary/10 border-primary/50 text-primary border-dashed animate-pulse'
+                                                                        : 'glass border-white/5 text-gray-400 opacity-60 hover:opacity-100'
+                                                                }`}
+                                                        >
+                                                            {cell.completed && isCountdown && (
+                                                                <motion.div
+                                                                    initial={{ scale: 0, opacity: 0 }}
+                                                                    animate={{ scale: [0, 1.2, 1], opacity: 1 }}
+                                                                    className="absolute inset-0 bg-white/20 flex items-center justify-center"
+                                                                >
+                                                                    <CheckCircle2 size={20} className="text-white" />
+                                                                </motion.div>
+                                                            )}
+                                                            {isMissed && !cell.completed && (
+                                                                <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full"></div>
+                                                            )}
+                                                            <span className={cell.completed && isCountdown ? 'relative z-10 text-[7px] mt-1 font-black opacity-30 transition-opacity' : 'relative z-10'}>
+                                                                {isCountdown ? `يوم ${cell.day}` : `${(cell.amount / 1000)}k`}
+                                                            </span>
+                                                            {isToday && !cell.completed && (
+                                                                <span className="absolute bottom-1 text-[6px] font-black opacity-50">اليوم</span>
+                                                            )}
+
+                                                            {cell.completed && isCountdown && (
+                                                                <motion.div
+                                                                    initial={{ scale: 0.8, opacity: 1 }}
+                                                                    animate={{ scale: 2.5, opacity: 0 }}
+                                                                    transition={{ duration: 0.8, ease: "easeOut" }}
+                                                                    className="absolute inset-0 border-4 border-white rounded-xl pointer-events-none"
+                                                                />
+                                                            )}
+                                                        </motion.button>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     )}
@@ -365,7 +457,21 @@ const Goals = () => {
                             className="bg-dark-lighter w-full p-8 rounded-t-[3rem] shadow-2xl border-t border-white/10"
                         >
                             <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto mb-8"></div>
-                            <h3 className="text-2xl font-black mb-8 text-right">هدف جديد</h3>
+                            <div className="flex justify-between items-center mb-8">
+                                <h3 className="text-2xl font-black text-right">هدف جديد</h3>
+                                <div className="flex gap-2 bg-white/5 p-1 rounded-2xl">
+                                    <button
+                                        type="button"
+                                        onClick={() => setNewGoal({ ...newGoal, type: 'SAVINGS', useGrid: false, target: 0 })}
+                                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${newGoal.type === 'SAVINGS' ? 'bg-primary text-black' : 'opacity-50'}`}
+                                    >ادخار مالي</button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setNewGoal({ ...newGoal, type: 'COUNTDOWN', useGrid: true, target: 0 })}
+                                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${newGoal.type === 'COUNTDOWN' ? 'bg-primary text-black' : 'opacity-50'}`}
+                                    >عد تنازلي</button>
+                                </div>
+                            </div>
                             <form onSubmit={handleAddGoal} className="space-y-6">
                                 <div className="glass p-5 rounded-[2rem] border border-white/5">
                                     <label className="block text-xs text-gray-500 mb-2 text-right">عنوان الهدف</label>
@@ -379,37 +485,47 @@ const Goals = () => {
                                         autoFocus
                                     />
                                 </div>
-                                <div className="glass p-5 rounded-[2rem] border border-white/5">
-                                    <label className="block text-xs text-gray-500 mb-2 text-right">المبلغ المستهدف (د.ع)</label>
-                                    <input
-                                        type="number"
-                                        className="w-full bg-transparent outline-none font-bold text-3xl text-right"
-                                        placeholder="0"
-                                        value={newGoal.target}
-                                        onChange={(e) => setNewGoal({ ...newGoal, target: e.target.value })}
-                                        required
-                                    />
-                                </div>
+                                {newGoal.type === 'SAVINGS' && (
+                                    <div className="glass p-5 rounded-[2rem] border border-white/5">
+                                        <label className="block text-xs text-gray-500 mb-2 text-right">المبلغ المستهدف (د.ع)</label>
+                                        <input
+                                            type="number"
+                                            className="w-full bg-transparent outline-none font-bold text-3xl text-right"
+                                            placeholder="0"
+                                            value={newGoal.target}
+                                            onChange={(e) => setNewGoal({ ...newGoal, target: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                )}
                                 <div className="glass p-5 rounded-[2rem] border border-white/5 flex items-center justify-between">
                                     <div className="text-right">
-                                        <label className="block text-sm font-bold">تفعيل شبكة الادخار</label>
-                                        <p className="text-[10px] text-gray-500">تقسيم الهدف إلى مبالغ صغيرة (٥، ١٠، ١٥ ألف)</p>
+                                        <label className="block text-sm font-bold">
+                                            {newGoal.type === 'COUNTDOWN' ? 'تفعيل تتبع الأيام' : 'تفعيل شبكة الادخار'}
+                                        </label>
+                                        <p className="text-[10px] text-gray-500">
+                                            {newGoal.type === 'COUNTDOWN' ? 'عرض شبكة للأيام المتبقية للهدف' : 'تقسيم الهدف إلى مبالغ صغيرة (٥، ١٠، ١٥ ألف)'}
+                                        </p>
                                     </div>
                                     <button
                                         type="button"
-                                        onClick={() => setNewGoal({ ...newGoal, useGrid: !newGoal.useGrid })}
-                                        className={`w-14 h-8 rounded-full transition-all relative ${newGoal.useGrid ? 'bg-primary' : 'bg-white/10'}`}
+                                        onClick={() => setNewGoal({ ...newGoal, useGrid: true })}
+                                        disabled={newGoal.type === 'COUNTDOWN'}
+                                        className={`w-14 h-8 rounded-full transition-all relative ${newGoal.useGrid || newGoal.type === 'COUNTDOWN' ? 'bg-primary' : 'bg-white/10'}`}
                                     >
-                                        <div className={`absolute top-1 w-6 h-6 rounded-full transition-all ${newGoal.useGrid ? 'right-1 bg-black' : 'right-7 bg-white'}`}></div>
+                                        <div className={`absolute top-1 w-6 h-6 rounded-full transition-all ${newGoal.useGrid || newGoal.type === 'COUNTDOWN' ? 'right-1 bg-black' : 'right-7 bg-white'}`}></div>
                                     </button>
                                 </div>
                                 <div className="glass p-5 rounded-[2rem] border border-white/5">
-                                    <label className="block text-xs text-gray-500 mb-2 text-right">الموعد المستهدف (اختياري)</label>
+                                    <label className="block text-xs text-gray-500 mb-2 text-right">
+                                        {newGoal.type === 'COUNTDOWN' ? 'تاريخ نهاية الهدف (مطلوب)' : 'الموعد المستهدف (اختياري)'}
+                                    </label>
                                     <input
                                         type="date"
                                         className="w-full bg-transparent outline-none font-bold text-xl text-right"
                                         value={newGoal.deadline}
                                         onChange={(e) => setNewGoal({ ...newGoal, deadline: e.target.value })}
+                                        required={newGoal.type === 'COUNTDOWN'}
                                     />
                                 </div>
                                 <div className="flex gap-4 pt-4">
