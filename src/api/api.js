@@ -17,6 +17,8 @@ export const api = {
     // Budget
     getBudgetStatus: (date) => Promise.resolve({ data: storageService.getBudgetStatus(date) }),
     upsertBudget: (data) => Promise.resolve({ data: storageService.upsertBudget(data) }),
+    getBudgetSettings: () => Promise.resolve({ data: storageService.getBudgetSettings() }),
+    updateBudgetSettings: (data) => Promise.resolve({ data: storageService.updateBudgetSettings(data) }),
 
     // Debts
     getDebts: () => Promise.resolve({ data: storageService.getDebts() }),
@@ -36,10 +38,6 @@ export const api = {
     // Notifications
     getNotifications: () => Promise.resolve({ data: storageService.getNotifications() }),
     markNotificationRead: (id) => Promise.resolve({ data: storageService.markNotificationRead(id) }),
-
-    // Exchange Rate
-    getExchangeRate: () => Promise.resolve({ data: storageService.getExchangeRate() }),
-    updateExchangeRate: (rate) => Promise.resolve({ data: storageService.updateExchangeRate(rate) }),
 
     // Goals
     getGoals: () => Promise.resolve({ data: storageService.getGoals() }),
@@ -67,7 +65,8 @@ export const api = {
 
     // Debt Payments
     getPayments: (debtId) => Promise.resolve({ data: storageService.getPayments(debtId) }),
-    addPayment: (data) => Promise.resolve({ data: storageService.addPayment(data) }),
+    addPayment: (debtPayment) => storageService.addDebtPayment(debtPayment),
+    updatePayment: (debtId, paymentId, newAmount, cardId) => Promise.resolve({ data: storageService.updateDebtPayment(debtId, paymentId, newAmount, cardId) }),
     storeAmount: (id, amount, type) => Promise.resolve({ data: storageService.storeAmount(id, amount, type) }),
 
     // User Savings

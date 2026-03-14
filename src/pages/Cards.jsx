@@ -4,6 +4,7 @@ import { Plus, CreditCard, Trash2, Edit2, Zap, TrendingUp, Sparkles, PlusCircle 
 import { motion, AnimatePresence } from 'framer-motion';
 import CustomModal from '../components/CustomModal';
 import { TopUpSuccess } from '../components/PaymentFeedback';
+import AmountInput from '../components/AmountInput';
 
 const Cards = () => {
     const [cards, setCards] = useState([]);
@@ -17,7 +18,8 @@ const Cards = () => {
     const [cardToRecharge, setCardToRecharge] = useState(null);
     const [rechargeAmount, setRechargeAmount] = useState('');
     const [editForm, setEditForm] = useState(null);
-    const [newCard, setNewCard] = useState({ name: '', balance: 0, isBudgeted: true });
+    const [newCard, setNewCard] = useState({ name: '', balance: 0, isBudgeted: true, allowedDays: 30, allocations: [], linkedDebtId: '' });
+    const [debts, setDebts] = useState([]);
 
     const GRADIENTS = [
         'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
@@ -32,7 +34,38 @@ const Cards = () => {
 
     useEffect(() => {
         fetchCards();
+        fetchDebts();
     }, []);
+
+    const fetchDebts = async () => {
+        try {
+            const res = await api.getDebts();
+            setDebts(res.data);
+        } catch (error) {
+            console.error("Error fetching debts", error);
+        }
+    };
+
+    const handleAddAllocation = (formState, setFormState) => {
+        setFormState(prev => ({
+            ...prev,
+            allocations: [...(prev.allocations || []), { id: Date.now().toString(), name: '', amount: '' }]
+        }));
+    };
+
+    const handleUpdateAllocation = (formState, setFormState, id, field, value) => {
+        setFormState(prev => ({
+            ...prev,
+            allocations: prev.allocations.map(a => a.id === id ? { ...a, [field]: value } : a)
+        }));
+    };
+
+    const handleRemoveAllocation = (formState, setFormState, id) => {
+        setFormState(prev => ({
+            ...prev,
+            allocations: prev.allocations.filter(a => a.id !== id)
+        }));
+    };
 
     const fetchCards = async () => {
         try {
@@ -50,11 +83,14 @@ const Cards = () => {
             await api.createCard({
                 ...newCard,
                 balance: parseFloat(newCard.balance || 0),
+                allowedDays: parseInt(newCard.allowedDays || 30),
+                allocations: (newCard.allocations || []).filter(a => a.name && a.amount),
+                linkedDebtId: newCard.linkedDebtId,
                 style: randomGradient,
                 isBudgeted: newCard.isBudgeted
             });
             setIsAdding(false);
-            setNewCard({ name: '', balance: 0, isBudgeted: true });
+            setNewCard({ name: '', balance: 0, isBudgeted: true, allowedDays: 30, allocations: [], linkedDebtId: '' });
             fetchCards();
         } catch (error) {
             console.error("Error adding card", error);
@@ -67,7 +103,10 @@ const Cards = () => {
             await api.updateCard(editForm.id, {
                 name: editForm.name,
                 balance: parseFloat(editForm.balance),
-                isBudgeted: editForm.isBudgeted
+                isBudgeted: editForm.isBudgeted,
+                allowedDays: parseInt(editForm.allowedDays || 30),
+                allocations: (editForm.allocations || []).filter(a => a.name && a.amount),
+                linkedDebtId: editForm.linkedDebtId
             });
             setIsEditing(false);
             setEditForm(null);
@@ -134,7 +173,7 @@ const Cards = () => {
                         <motion.div
                             layout
                             key={card.id}
-                            className="rounded-[2.5rem] p-7 shadow-2xl relative overflow-hidden h-56 flex flex-col justify-between group border border-white/10 active:scale-[0.98] transition-all"
+                            className="rounded-[2.5rem] p-7 shadow-2xl relative overflow-hidden min-h-[14rem] flex flex-col justify-between group border border-white/10 active:scale-[0.98] transition-all"
                             style={{ background: card.style || GRADIENTS[0] }}
                         >
                             <ProfessionalCardDecor />
@@ -146,7 +185,7 @@ const Cards = () => {
                                 <div className="flex gap-2">
                                     <button
                                         onClick={() => {
-                                            setEditForm(card);
+                                            setEditForm({ ...card, allowedDays: card.allowedDays || 30, allocations: card.allocations || [], linkedDebtId: card.linkedDebtId || '' });
                                             setIsEditing(true);
                                         }}
                                         className="p-3 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors backdrop-blur-md border border-white/5 shadow-sm"
@@ -192,6 +231,25 @@ const Cards = () => {
                                         شحن الرصيد
                                     </button>
                                 </div>
+                                {card.allocations && card.allocations.length > 0 && (
+                                    <div className="mt-4 pt-4 border-t border-white/10">
+                                        <p className="text-[10px] text-white/50 mb-2">مخصصات المحفظة:</p>
+                                        <div className="space-y-1">
+                                            {card.allocations.map((alloc, idx) => (
+                                                <div key={idx} className="flex justify-between items-center bg-white/5 px-3 py-1.5 rounded-xl">
+                                                    <span className="text-[11px] font-bold text-white/90">{alloc.name}</span>
+                                                    <span className="text-[11px] font-black text-white">{(parseFloat(alloc.amount) || 0).toLocaleString('en-US')} د.ع</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {card.linkedDebtId && (
+                                    <div className="mt-4 pt-4 border-t border-white/10 text-xs text-white pb-1 flex items-center justify-between">
+                                        <span className="opacity-70">مرتبطة بدين نشط:</span>
+                                        <span className="font-bold opacity-100">{debts.find(d => d.id === card.linkedDebtId)?.borrower || 'دين غير معروف'}</span>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Samarra-style spiral light effects */}
@@ -229,8 +287,7 @@ const Cards = () => {
                                 </div>
                                 <div className="glass p-5 rounded-[2rem] border border-white/5">
                                     <label className="block text-xs text-gray-500 mb-2 text-right">الرصيد الافتتاحي</label>
-                                    <input
-                                        type="number"
+                                    <AmountInput
                                         className="w-full bg-transparent outline-none font-bold text-3xl text-right"
                                         placeholder="0"
                                         value={newCard.balance}
@@ -248,6 +305,70 @@ const Cards = () => {
                                         <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${newCard.isBudgeted ? 'left-7' : 'left-1'}`} />
                                     </button>
                                 </div>
+
+                                {newCard.isBudgeted && (
+                                    <div className="glass p-5 rounded-[2rem] border border-white/5">
+                                        <label className="block text-xs text-gray-500 mb-2 text-right">مدة الصرف المسموحة (بالأيام)</label>
+                                        <input
+                                            type="number"
+                                            className="w-full bg-transparent outline-none font-bold text-xl text-right"
+                                            placeholder="مثال: 30"
+                                            value={newCard.allowedDays}
+                                            onChange={(e) => setNewCard({ ...newCard, allowedDays: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                )}
+
+                                <div className="glass p-5 rounded-[2rem] border border-white/5">
+                                    <label className="block text-xs text-gray-500 mb-4 text-right">المخصصات الفرعية (تقسيم الرصيد)</label>
+                                    <div className="space-y-2 mb-3">
+                                        {newCard.allocations && newCard.allocations.map(alloc => (
+                                            <div key={alloc.id} className="flex flex-col sm:flex-row gap-2">
+                                                <input
+                                                    type="text"
+                                                    className="w-full sm:flex-[2] bg-white/5 outline-none text-xs font-bold p-3 rounded-xl border border-white/5 text-right opacity-80"
+                                                    placeholder="اسم المخصص"
+                                                    value={alloc.name}
+                                                    onChange={(e) => handleUpdateAllocation(newCard, setNewCard, alloc.id, 'name', e.target.value)}
+                                                />
+                                                <div className="flex gap-2 w-full sm:flex-[1.5]">
+                                                    <AmountInput
+                                                        className="flex-1 bg-white/5 outline-none text-xs font-black p-3 rounded-xl border border-white/5 text-right opacity-80"
+                                                        placeholder="0"
+                                                        value={alloc.amount}
+                                                        onChange={(e) => handleUpdateAllocation(newCard, setNewCard, alloc.id, 'amount', e.target.value)}
+                                                    />
+                                                    <button type="button" onClick={() => handleRemoveAllocation(newCard, setNewCard, alloc.id)} className="bg-red-500/20 text-red-500 p-3 rounded-xl active:scale-95 transition-all">
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleAddAllocation(newCard, setNewCard)}
+                                        className="w-full py-3 glass rounded-xl text-[11px] font-black text-gray-400 flex items-center justify-center gap-2 hover:bg-white/10 transition-colors"
+                                    >
+                                        <PlusCircle size={14} /> إضافة مخصص جديد
+                                    </button>
+                                </div>
+
+                                <div className="glass p-5 rounded-[2rem] border border-white/5">
+                                    <label className="block text-xs text-gray-500 mb-2 text-right">ربط البطاقة بدين (اختياري)</label>
+                                    <select
+                                        className="w-full bg-transparent outline-none font-bold text-base text-right appearance-none cursor-pointer"
+                                        value={newCard.linkedDebtId}
+                                        onChange={(e) => setNewCard({ ...newCard, linkedDebtId: e.target.value })}
+                                    >
+                                        <option value="" className="bg-dark text-white">بدون ربط</option>
+                                        {debts.filter(d => !d.isArchived && d.status !== 'COMPLETED').map(d => (
+                                            <option key={d.id} value={d.id} className="bg-dark text-white">{d.borrower} - {d.amount.toLocaleString('en-US')} د.ع</option>
+                                        ))}
+                                    </select>
+                                </div>
+
                                 <div className="flex gap-4 pt-4">
                                     <button type="submit" className="flex-[2] bg-primary p-5 rounded-3xl font-black shadow-xl shadow-primary/20">تأكيد الحفظ</button>
                                     <button type="button" onClick={() => setIsAdding(false)} className="flex-1 glass p-5 rounded-3xl font-bold opacity-50">إلغاء</button>
@@ -282,8 +403,7 @@ const Cards = () => {
                                 </div>
                                 <div className="glass p-5 rounded-[2rem] border border-white/5">
                                     <label className="block text-xs text-gray-500 mb-2 text-right">الرصيد الحالي</label>
-                                    <input
-                                        type="number"
+                                    <AmountInput
                                         className="w-full bg-transparent outline-none font-bold text-3xl text-right"
                                         value={editForm.balance}
                                         onChange={(e) => setEditForm({ ...editForm, balance: e.target.value })}
@@ -300,6 +420,70 @@ const Cards = () => {
                                         <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${editForm.isBudgeted ? 'left-7' : 'left-1'}`} />
                                     </button>
                                 </div>
+
+                                {editForm.isBudgeted && (
+                                    <div className="glass p-5 rounded-[2rem] border border-white/5">
+                                        <label className="block text-xs text-gray-500 mb-2 text-right">مدة الصرف المسموحة (بالأيام)</label>
+                                        <input
+                                            type="number"
+                                            className="w-full bg-transparent outline-none font-bold text-xl text-right"
+                                            placeholder="مثال: 30"
+                                            value={editForm.allowedDays}
+                                            onChange={(e) => setEditForm({ ...editForm, allowedDays: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                )}
+
+                                <div className="glass p-5 rounded-[2rem] border border-white/5">
+                                    <label className="block text-xs text-gray-500 mb-4 text-right">المخصصات الفرعية (تقسيم الرصيد)</label>
+                                    <div className="space-y-2 mb-3">
+                                        {editForm.allocations && editForm.allocations.map(alloc => (
+                                            <div key={alloc.id} className="flex flex-col sm:flex-row gap-2">
+                                                <input
+                                                    type="text"
+                                                    className="w-full sm:flex-[2] bg-white/5 outline-none text-xs font-bold p-3 rounded-xl border border-white/5 text-right opacity-80"
+                                                    placeholder="اسم المخصص"
+                                                    value={alloc.name}
+                                                    onChange={(e) => handleUpdateAllocation(editForm, setEditForm, alloc.id, 'name', e.target.value)}
+                                                />
+                                                <div className="flex gap-2 w-full sm:flex-[1.5]">
+                                                    <AmountInput
+                                                        className="flex-1 bg-white/5 outline-none text-xs font-black p-3 rounded-xl border border-white/5 text-right opacity-80"
+                                                        placeholder="0"
+                                                        value={alloc.amount}
+                                                        onChange={(e) => handleUpdateAllocation(editForm, setEditForm, alloc.id, 'amount', e.target.value)}
+                                                    />
+                                                    <button type="button" onClick={() => handleRemoveAllocation(editForm, setEditForm, alloc.id)} className="bg-red-500/20 text-red-500 p-3 rounded-xl active:scale-95 transition-all">
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleAddAllocation(editForm, setEditForm)}
+                                        className="w-full py-3 glass rounded-xl text-[11px] font-black text-gray-400 flex items-center justify-center gap-2 hover:bg-white/10 transition-colors"
+                                    >
+                                        <PlusCircle size={14} /> إضافة مخصص جديد
+                                    </button>
+                                </div>
+
+                                <div className="glass p-5 rounded-[2rem] border border-white/5">
+                                    <label className="block text-xs text-gray-500 mb-2 text-right">ربط البطاقة بدين (اختياري)</label>
+                                    <select
+                                        className="w-full bg-transparent outline-none font-bold text-base text-right appearance-none cursor-pointer"
+                                        value={editForm.linkedDebtId}
+                                        onChange={(e) => setEditForm({ ...editForm, linkedDebtId: e.target.value })}
+                                    >
+                                        <option value="" className="bg-dark text-white">بدون ربط</option>
+                                        {debts.filter(d => !d.isArchived && d.status !== 'COMPLETED').map(d => (
+                                            <option key={d.id} value={d.id} className="bg-dark text-white">{d.borrower} - {d.amount.toLocaleString('en-US')} د.ع</option>
+                                        ))}
+                                    </select>
+                                </div>
+
                                 <div className="flex gap-4 pt-4">
                                     <button type="submit" className="flex-[2] bg-secondary p-5 rounded-3xl font-black shadow-xl">تحديث البيانات</button>
                                     <button type="button" onClick={() => setIsEditing(false)} className="flex-1 glass p-5 rounded-3xl font-bold opacity-50">إلغاء</button>
@@ -361,8 +545,7 @@ const Cards = () => {
                             <form onSubmit={handleRecharge} className="space-y-6">
                                 <div className="glass p-5 rounded-[2rem] border border-white/5">
                                     <label className="block text-xs text-gray-500 mb-2 text-right">المبلغ المراد شحنه</label>
-                                    <input
-                                        type="number"
+                                    <AmountInput
                                         className="w-full bg-transparent outline-none font-bold text-4xl text-right text-primary"
                                         placeholder="0"
                                         value={rechargeAmount}

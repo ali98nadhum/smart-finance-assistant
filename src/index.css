@@ -47,3 +47,83 @@ body {
 .card-gradient {
   background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
 }
+
+/* ReactQuill Dark Theme Overrides */
+.custom-quill-container .ql-toolbar {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top-left-radius: 0.75rem;
+  border-top-right-radius: 0.75rem;
+}
+
+.custom-quill-container .ql-container {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom-left-radius: 0.75rem;
+  border-bottom-right-radius: 0.75rem;
+  background: rgba(0, 0, 0, 0.2);
+  min-height: 80px;
+}
+
+.custom-quill-container .ql-editor {
+  min-height: 80px;
+  font-family: inherit;
+  font-size: 0.875rem;
+}
+
+.custom-quill-container .ql-editor.ql-blank::before {
+  color: #64748b;
+  /* text-gray-500 */
+  font-style: normal;
+  left: unset;
+  right: 15px;
+}
+
+.custom-quill-container .ql-snow .ql-stroke {
+  stroke: #cbd5e1;
+  /* text-gray-300 */
+}
+
+.custom-quill-container .ql-snow .ql-fill {
+  fill: #cbd5e1;
+}
+
+.custom-quill-container .ql-snow .ql-picker {
+  color: #cbd5e1;
+}
+
+.custom-quill-container .ql-snow.ql-toolbar button:hover .ql-stroke,
+.custom-quill-container .ql-snow .ql-toolbar button:hover .ql-stroke,
+.custom-quill-container .ql-snow.ql-toolbar button.ql-active .ql-stroke,
+.custom-quill-container .ql-snow .ql-toolbar button.ql-active .ql-stroke {
+  stroke: #3b82f6;
+  /* text-primary */
+}
+
+.custom-quill-container .ql-snow.ql-toolbar button:hover .ql-fill,
+.custom-quill-container .ql-snow .ql-toolbar button:hover .ql-fill,
+.custom-quill-container .ql-snow.ql-toolbar button.ql-active .ql-fill,
+.custom-quill-container .ql-snow .ql-toolbar button.ql-active .ql-fill {
+  fill: #3b82f6;
+  /* text-primary */
+}
+
+/* Rendered Quill Content Formatting */
+.quill-content ul {
+  list-style-type: disc;
+  padding-right: 1.5rem;
+  /* Arabic RTL */
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.quill-content ol {
+  list-style-type: decimal;
+  padding-right: 1.5rem;
+  /* Arabic RTL */
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.quill-content p {
+  margin-bottom: 0.25rem;
+}

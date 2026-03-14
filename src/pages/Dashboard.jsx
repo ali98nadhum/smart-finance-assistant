@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../api/api';
 import { Plus, ArrowUpRight, ArrowDownLeft, TrendingUp, Bell, Settings, Edit2, Calendar as CalIcon, DollarSign, RefreshCw, ArrowRightLeft, Zap, Sparkles, Lock } from 'lucide-react';
 import NotificationsModal from '../components/NotificationsModal';
-import CategoryManager from '../components/CategoryManager';
+import SettingsManager from '../components/SettingsManager';
 import { motion, AnimatePresence } from 'framer-motion';
 import CustomModal from '../components/CustomModal';
+import AmountInput from '../components/AmountInput';
 
 
 const Dashboard = () => {
@@ -14,16 +15,12 @@ const Dashboard = () => {
     const [savings, setSavings] = useState(0);
     const [isNotifOpen, setIsNotifOpen] = useState(false);
     const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '' });
-    const [showCategoryManager, setShowCategoryManager] = useState(false);
+    const [showSettingsManager, setShowSettingsManager] = useState(false);
     const [showPinModal, setShowPinModal] = useState(false);
     const [pinInput, setPinInput] = useState("");
-    const [isEditingBudget, setIsEditingBudget] = useState(false);
     const [isAdjustingSavings, setIsAdjustingSavings] = useState(false);
     const [budgetForm, setBudgetForm] = useState({ dailyLimit: '', date: new Date().toLocaleDateString('en-CA') });
     const [savingsForm, setSavingsForm] = useState({ amount: '', type: 'SET' });
-    const [exchangeData, setExchangeData] = useState({ rate: 1530, lastUpdated: '' });
-    const [isConverterOpen, setIsConverterOpen] = useState(false);
-    const [converter, setConverter] = useState({ usd: '', iqd: '', mode: 'USD_TO_IQD' });
     const [aiInsights, setAiInsights] = useState([]);
     const [currentInsightIndex, setCurrentInsightIndex] = useState(0);
 
@@ -40,19 +37,17 @@ const Dashboard = () => {
 
     const fetchData = async () => {
         try {
-            const [cardsRes, budgetRes, transRes, savingsRes, exchangeRes, aiRes] = await Promise.all([
+            const [cardsRes, budgetRes, transRes, savingsRes, aiRes] = await Promise.all([
                 api.getCards(),
                 api.getBudgetStatus(budgetForm.date),
                 api.getTransactions(),
                 api.getSavings(),
-                api.getExchangeRate(),
                 api.getAIInsights()
             ]);
             setCards(cardsRes.data);
             setBudgetStatus(budgetRes.data);
             setRecentTransactions(transRes.data.transactions.slice(0, 5));
             setSavings(savingsRes.data.savings);
-            setExchangeData(exchangeRes.data);
             setAiInsights(aiRes.data);
         } catch (error) {
             console.error("Error fetching dashboard data", error);
@@ -84,23 +79,6 @@ const Dashboard = () => {
 
         } catch (error) {
             console.error("Error updating savings", error);
-        }
-    };
-
-    const handleConverterChange = (value, field) => {
-        const rate = exchangeData.rate;
-        if (field === 'usd') {
-            setConverter({
-                ...converter,
-                usd: value,
-                iqd: value ? Math.round(parseFloat(value) * rate).toString() : ''
-            });
-        } else {
-            setConverter({
-                ...converter,
-                iqd: value,
-                usd: value ? (parseFloat(value) / rate).toFixed(2).toString() : ''
-            });
         }
     };
 
@@ -141,7 +119,7 @@ const Dashboard = () => {
                         <Bell size={24} />
                         <div className="absolute top-3 right-3 w-2 h-2 bg-primary rounded-full border-2 border-dark"></div>
                     </button>
-                    <button onClick={() => setShowCategoryManager(true)} className="p-3 glass rounded-2xl flex items-center justify-center">
+                    <button onClick={() => setShowSettingsManager(true)} className="p-3 glass rounded-2xl flex items-center justify-center">
                         <Settings size={24} />
                     </button>
                 </div>
@@ -217,34 +195,6 @@ const Dashboard = () => {
                 </motion.div>
             )}
 
-            {/* Currency Converter Widget */}
-            <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                onClick={() => setIsConverterOpen(true)}
-                className="glass rounded-3xl p-5 mb-8 border border-white/10 flex items-center justify-between group active:scale-95 transition-all cursor-pointer overflow-hidden relative"
-            >
-                <div className="flex items-center gap-4 relative z-10">
-                    <div className="w-12 h-12 bg-green-500/20 rounded-2xl flex items-center justify-center text-green-500">
-                        <DollarSign size={24} />
-                    </div>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-400 font-bold">سعر الصرف اليوم</span>
-                            <RefreshCw size={10} className="text-gray-500 animate-spin-slow" />
-                        </div>
-                        <h4 className="text-lg font-black tracking-tight">
-                            $1 = <span className="text-green-500">{exchangeData.rate.toLocaleString('en-US')}</span> د.ع
-                        </h4>
-                    </div>
-                </div>
-                <div className="bg-white/5 p-3 rounded-2xl group-hover:bg-white/10 transition-colors">
-                    <ArrowRightLeft size={20} className="text-gray-400" />
-                </div>
-                {/* Background Decor */}
-                <div className="absolute top-[-50%] right-[-10%] w-32 h-32 bg-green-500/5 rounded-full blur-2xl"></div>
-            </motion.div>
-
             {/* Monthly Progress / Daily Budget */}
             <div className="glass rounded-2xl p-5 mb-8 border border-white/5 relative group">
                 <div className="flex justify-between items-center mb-4">
@@ -257,74 +207,39 @@ const Dashboard = () => {
                             onChange={(e) => setBudgetForm({ ...budgetForm, date: e.target.value })}
                         />
                     </div>
-                    <button
-                        onClick={() => {
-                            setBudgetForm({ ...budgetForm, dailyLimit: budgetStatus.budget });
-                            setIsEditingBudget(true);
-                        }}
-                        className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                    >
-                        <Edit2 size={16} className="text-gray-400" />
-                    </button>
+                    <div className="text-left">
+                        {budgetStatus.isActiveDay ? (
+                            <h2 className="text-xl font-black text-primary">{Math.round(budgetStatus.budget).toLocaleString('en-US')} د.ع</h2>
+                        ) : (
+                            <h2 className="text-sm font-bold text-gray-400">غير مخصص للصرف</h2>
+                        )}
+                    </div>
                 </div>
-                <div className="w-full bg-gray-700/50 h-3 rounded-full overflow-hidden mb-3 border border-white/5">
-                    <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${Math.min((budgetStatus.spent / (budgetStatus.budget || 1)) * 100, 100)}%` }}
-                        className={`h-full rounded-full ${(budgetStatus.spent / budgetStatus.budget) > 0.9 ? 'bg-red-500' : 'bg-primary'}`}
-                    ></motion.div>
-                </div>
-                <div className="flex justify-between text-xs">
-                    <span className="text-gray-400">صرفت: {budgetStatus.spent.toLocaleString('en-US')}</span>
-                    <span className={budgetStatus.remaining < 0 ? 'text-red-400 font-bold' : 'text-green-400 font-bold'}>
-                        {budgetStatus.remaining < 0 ? 'تجاوزت بـ: ' : 'باقي لك: '}
-                        {Math.abs(budgetStatus.remaining).toLocaleString('en-US')} د.ع
-                    </span>
-                </div>
-            </div>
 
-            {/* Budget Editor Modal */}
-            <AnimatePresence>
-                {isEditingBudget && (
-                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[90] flex items-center justify-center p-6">
-                        <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                            className="glass w-full max-w-sm p-8 rounded-[2rem] border border-white/10"
-                        >
-                            <h3 className="text-xl font-bold mb-6 text-center">تحديد ميزانية اليوم</h3>
-                            <div className="space-y-4">
-                                <div className="glass p-4 rounded-2xl border border-white/5">
-                                    <label className="text-xs text-gray-500 block mb-1">الميزانية المطلوبة (د.ع)</label>
-                                    <input
-                                        type="number"
-                                        className="w-full bg-transparent text-2xl font-black focus:outline-none"
-                                        placeholder="0"
-                                        value={budgetForm.dailyLimit}
-                                        onChange={(e) => setBudgetForm({ ...budgetForm, dailyLimit: e.target.value })}
-                                        autoFocus
-                                    />
-                                </div>
-                                <div className="flex gap-3">
-                                    <button
-                                        onClick={handleUpdateBudget}
-                                        className="flex-[2] bg-primary p-4 rounded-2xl font-bold shadow-lg shadow-primary/20"
-                                    >
-                                        حفظ
-                                    </button>
-                                    <button
-                                        onClick={() => setIsEditingBudget(false)}
-                                        className="flex-1 glass p-4 rounded-2xl font-bold opacity-50"
-                                    >
-                                        إلغاء
-                                    </button>
-                                </div>
-                            </div>
-                        </motion.div>
+                {budgetStatus.isActiveDay ? (
+                    <>
+                        <div className="w-full bg-gray-700/50 h-3 rounded-full overflow-hidden mb-3 border border-white/5">
+                            <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${Math.min((budgetStatus.spent / (Math.round(budgetStatus.budget) || 1)) * 100, 100)}%` }}
+                                className={`h-full rounded-full ${(budgetStatus.spent / Math.round(budgetStatus.budget)) > 0.9 ? 'bg-red-500' : 'bg-primary'}`}
+                            ></motion.div>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                            <span className="text-gray-400">صرفت: {Math.round(budgetStatus.spent).toLocaleString('en-US')}</span>
+                            <span className={budgetStatus.remaining < 0 ? 'text-red-400 font-bold' : 'text-green-400 font-bold'}>
+                                {budgetStatus.remaining < 0 ? 'تجاوزت بـ: ' : 'باقي لك: '}
+                                {Math.abs(Math.round(budgetStatus.remaining)).toLocaleString('en-US')} د.ع
+                            </span>
+                        </div>
+                    </>
+                ) : (
+                    <div className="flex justify-between items-center text-xs mt-2 p-3 bg-white/5 rounded-xl border border-white/5">
+                        <span className="text-gray-400">ما قمت بصرفه اليوم:</span>
+                        <span className="font-black text-white">{Math.round(budgetStatus.spent).toLocaleString('en-US')} د.ع</span>
                     </div>
                 )}
-            </AnimatePresence>
+            </div>
 
             {/* Savings Adjustment Modal */}
             <AnimatePresence>
@@ -351,8 +266,7 @@ const Dashboard = () => {
                                 </div>
                                 <div className="glass p-4 rounded-2xl border border-white/5">
                                     <label className="text-xs text-gray-500 block mb-1">المبلغ (د.ع)</label>
-                                    <input
-                                        type="number"
+                                    <AmountInput
                                         className="w-full bg-transparent text-2xl font-black focus:outline-none"
                                         placeholder="0"
                                         value={savingsForm.amount}
@@ -486,79 +400,7 @@ const Dashboard = () => {
 
             <NotificationsModal
                 isOpen={isNotifOpen} onClose={() => setIsNotifOpen(false)} />
-            <CategoryManager isOpen={showCategoryManager} onClose={() => setShowCategoryManager(false)} />
-
-            {/* Quick Converter Modal */}
-            <AnimatePresence>
-                {isConverterOpen && (
-                    <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[100] flex items-center justify-center p-6">
-                        <motion.div
-                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                            animate={{ scale: 1, opacity: 1, y: 0 }}
-                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                            className="glass w-full max-w-sm p-8 rounded-[3rem] border border-white/10 relative"
-                        >
-                            <button
-                                onClick={() => setIsConverterOpen(false)}
-                                className="absolute top-6 left-6 text-gray-500 hover:text-white transition-colors"
-                            >
-                                <Plus className="rotate-45" size={24} />
-                            </button>
-
-                            <div className="text-center mb-8 pt-4">
-                                <div className="w-16 h-16 bg-primary/20 text-primary rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <ArrowRightLeft size={32} />
-                                </div>
-                                <h3 className="text-2xl font-black">محول العملات السريع</h3>
-                                <p className="text-gray-500 text-xs mt-1">بناءً على سعر الصرف: {exchangeData.rate} د.ع</p>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div className="glass p-5 rounded-3xl border border-white/5 relative">
-                                    <label className="text-[10px] text-gray-500 block mb-1 font-bold">المبلغ بالدولار ($)</label>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xl font-bold text-green-500">$</span>
-                                        <input
-                                            type="number"
-                                            className="w-full bg-transparent text-2xl font-black focus:outline-none"
-                                            placeholder="0.00"
-                                            value={converter.usd}
-                                            onChange={(e) => handleConverterChange(e.target.value, 'usd')}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-center -my-2 relative z-10">
-                                    <div className="bg-primary p-2 rounded-full shadow-lg shadow-primary/20">
-                                        <ArrowRightLeft size={16} className="text-black rotate-90" />
-                                    </div>
-                                </div>
-
-                                <div className="glass p-5 rounded-3xl border border-white/5 relative">
-                                    <label className="text-[10px] text-gray-500 block mb-1 font-bold">المبلغ بالدينار (د.ع)</label>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xl font-bold text-primary">IQD</span>
-                                        <input
-                                            type="number"
-                                            className="w-full bg-transparent text-2xl font-black focus:outline-none"
-                                            placeholder="0"
-                                            value={converter.iqd}
-                                            onChange={(e) => handleConverterChange(e.target.value, 'iqd')}
-                                        />
-                                    </div>
-                                </div>
-
-                                <button
-                                    onClick={() => setIsConverterOpen(false)}
-                                    className="w-full bg-primary p-5 rounded-2xl font-black text-black shadow-xl shadow-primary/20 active:scale-95 transition-all mt-4"
-                                >
-                                    تم
-                                </button>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
+            <SettingsManager isOpen={showSettingsManager} onClose={() => setShowSettingsManager(false)} />
 
             <CustomModal
                 isOpen={alertModal.isOpen}

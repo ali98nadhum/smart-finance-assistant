@@ -9,10 +9,10 @@ const STORAGE_KEYS = {
     SAVINGS: 'finance_savings',
     TODOS: 'finance_todos',
     NOTIFICATIONS: 'finance_notifications',
-    EXCHANGE_RATE: 'finance_exchange_rate',
     GOALS: 'finance_goals',
     CHALLENGES: 'finance_challenges',
-    SECURITY_PIN: 'finance_security_pin'
+    SECURITY_PIN: 'finance_security_pin',
+    BUDGET_SETTINGS: 'finance_budget_settings'
 };
 
 const DEFAULT_CATEGORIES = [
@@ -57,7 +57,6 @@ const generateId = () => {
 if (!localStorage.getItem(STORAGE_KEYS.CATEGORIES)) storage.set(STORAGE_KEYS.CATEGORIES, DEFAULT_CATEGORIES);
 if (!localStorage.getItem(STORAGE_KEYS.CARDS)) storage.set(STORAGE_KEYS.CARDS, DEFAULT_CARDS);
 if (localStorage.getItem(STORAGE_KEYS.SAVINGS) === null) storage.set(STORAGE_KEYS.SAVINGS, 0);
-if (!localStorage.getItem(STORAGE_KEYS.EXCHANGE_RATE)) storage.set(STORAGE_KEYS.EXCHANGE_RATE, { rate: 1530, lastUpdated: new Date().toISOString() });
 
 export const storageService = {
     // Basic Persistence
@@ -156,12 +155,39 @@ export const storageService = {
     getBudgetStatus: (dateStr) => {
         const date = dateStr ? new Date(dateStr) : new Date();
         const dailyId = date.toISOString().split('T')[0];
-        const budgets = storage.get(STORAGE_KEYS.BUDGETS);
-        const budgetObj = budgets.find(b => b.date && b.date.startsWith(dailyId)) || { dailyLimit: 50000 };
+
+        // 0: Sunday, 1: Monday, ... 6: Saturday
+        const currentDay = date.getDay();
+        const storedSettings = storage.get(STORAGE_KEYS.BUDGET_SETTINGS);
+        const budgetSettings = (storedSettings && Array.isArray(storedSettings.activeDays))
+            ? storedSettings
+            : { activeDays: [0, 1, 2, 3, 4, 5, 6] };
+
+        // Check if today is an active budget day
+        const isActiveDay = budgetSettings.activeDays.includes(currentDay);
+
+        // Helper to get remaining active days in the current month
+        const getRemainingActiveDaysInMonth = (currentDate, activeDays) => {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const lastDay = new Date(year, month + 1, 0).getDate();
+            let count = 0;
+
+            for (let d = currentDate.getDate(); d <= lastDay; d++) {
+                const checkDate = new Date(year, month, d);
+                if (activeDays.includes(checkDate.getDay())) {
+                    count++;
+                }
+            }
+            return count;
+        };
+
+        const remainingActiveDays = getRemainingActiveDaysInMonth(date, budgetSettings.activeDays);
 
         const txs = storage.get(STORAGE_KEYS.TRANSACTIONS);
         const cards = storage.get(STORAGE_KEYS.CARDS);
-        const budgetedCardIds = cards.filter(c => c.isBudgeted).map(c => c.id);
+        const budgetedCards = cards.filter(c => c.isBudgeted);
+        const budgetedCardIds = budgetedCards.map(c => c.id);
 
         const spent = txs
             .filter(tx =>
@@ -172,12 +198,36 @@ export const storageService = {
             )
             .reduce((acc, tx) => acc + parseFloat(tx.amount || 0), 0);
 
-        const limit = parseFloat(budgetObj.dailyLimit || 50000);
+        // Limit defaults to 0 if today is not an active spend day
+        let limit = 0;
+
+        if (isActiveDay) {
+            limit = budgetedCards.reduce((acc, card) => {
+                const cardBalance = parseFloat(card.balance || 0);
+                // If there are remaining active days, divide balance by them.
+                // Otherwise fallback to 1 to avoid division by zero.
+                const dailyShare = remainingActiveDays > 0 ? (cardBalance / remainingActiveDays) : cardBalance;
+                return acc + dailyShare;
+            }, 0);
+        }
+
         return {
             budget: limit,
             spent,
-            remaining: limit - spent
+            remaining: limit > 0 ? limit - spent : 0,
+            isActiveDay
         };
+    },
+
+    getBudgetSettings: () => {
+        const storedSettings = storage.get(STORAGE_KEYS.BUDGET_SETTINGS);
+        return (storedSettings && Array.isArray(storedSettings.activeDays))
+            ? storedSettings
+            : { activeDays: [0, 1, 2, 3, 4, 5, 6] };
+    },
+    updateBudgetSettings: (data) => {
+        storage.set(STORAGE_KEYS.BUDGET_SETTINGS, data);
+        return data;
     },
 
     upsertBudget: (data) => {
@@ -346,7 +396,142 @@ export const storageService = {
 
     // Debt Payments
     getPayments: (debtId) => storage.get(STORAGE_KEYS.DEBT_PAYMENTS).filter(p => p.debtId === debtId),
-    addPayment: (data) => storageService.save(STORAGE_KEYS.DEBT_PAYMENTS, { ...data, amount: parseFloat(data.amount || 0) }),
+    addDebtPayment: (paymentObj) => {
+        const { debtId, amount, cardId } = paymentObj;
+
+        const debts = storage.get(STORAGE_KEYS.DEBTS) || [];
+        const debtIndex = debts.findIndex(d => d.id === debtId);
+        if (debtIndex === -1) throw new Error("Debt not found");
+
+        const debt = debts[debtIndex];
+        const payment = {
+            id: generateId(),
+            amount: parseFloat(amount),
+            createdAt: new Date().toISOString(),
+            debtId: debtId
+        };
+
+        const payments = storage.get(STORAGE_KEYS.DEBT_PAYMENTS) || [];
+        payments.push(payment);
+        storage.set(STORAGE_KEYS.DEBT_PAYMENTS, payments);
+
+        const totalPaid = payments.filter(p => p.debtId === debtId).reduce((sum, p) => sum + p.amount, 0);
+        if (totalPaid >= debt.amount) {
+            debt.status = 'PAID';
+        }
+
+        debts[debtIndex] = debt;
+        storage.set(STORAGE_KEYS.DEBTS, debts);
+
+        // If a specific card was selected, deduct the balance from that card
+        if (cardId) {
+            const cards = storage.get(STORAGE_KEYS.CARDS) || [];
+            const cardIndex = cards.findIndex(c => c.id === cardId);
+            if (cardIndex !== -1) {
+                const card = cards[cardIndex];
+                if (card.balance >= parseFloat(amount)) {
+                    card.balance -= parseFloat(amount);
+                    storage.set(STORAGE_KEYS.CARDS, cards);
+
+                    // Also add a system transaction reflecting this payment
+                    const transactions = storage.get(STORAGE_KEYS.TRANSACTIONS) || [];
+                    const tx = {
+                        id: generateId(),
+                        amount: parseFloat(amount),
+                        type: 'EXPENSE',
+                        category: 'تسديد ديون',
+                        date: new Date().toISOString(),
+                        notes: `تسديد دفعة للدين: ${debt.personName || debt.borrower}`,
+                        cardId: card.id,
+                        isSystem: true
+                    };
+                    transactions.unshift(tx);
+                    storage.set(STORAGE_KEYS.TRANSACTIONS, transactions);
+                } else {
+                    throw new Error("رصيد البطاقة غير كافٍ");
+                }
+            }
+        }
+
+        return debt;
+    },
+    updateDebtPayment: (debtId, paymentId, newAmount, cardId) => {
+        const debts = storage.get(STORAGE_KEYS.DEBTS) || [];
+        const debtIndex = debts.findIndex(d => d.id === debtId);
+        if (debtIndex === -1) throw new Error("Debt not found");
+
+        const payments = storage.get(STORAGE_KEYS.DEBT_PAYMENTS) || [];
+        const paymentIndex = payments.findIndex(p => p.id === paymentId);
+        if (paymentIndex === -1) throw new Error("Payment not found");
+
+        const oldPayment = payments[paymentIndex];
+        const oldAmountFloat = parseFloat(oldPayment.amount);
+        const newAmountFloat = parseFloat(newAmount);
+
+        // Calculate diff: Positive means user needs to pay more now. 
+        const amountDiff = newAmountFloat - oldAmountFloat;
+
+        // If card is specified, deduct/refund the diff 
+        if (cardId) {
+            const cards = storage.get(STORAGE_KEYS.CARDS) || [];
+            const cardIndex = cards.findIndex(c => c.id === cardId);
+
+            if (cardIndex !== -1) {
+                const card = cards[cardIndex];
+
+                // If diff is positive, user is paying MORE, so deduct from card
+                if (amountDiff > 0) {
+                    if (card.balance >= amountDiff) {
+                        card.balance -= amountDiff;
+                    } else {
+                        throw new Error("رصيد البطاقة غير كافٍ لتغطية التعديل الإضافي");
+                    }
+                } else if (amountDiff < 0) {
+                    // diff is negative, user is paying LESS, so REFUND the card
+                    card.balance += Math.abs(amountDiff);
+                }
+
+                storage.set(STORAGE_KEYS.CARDS, cards);
+
+                // Add or update system transaction reflecting the modification
+                const transactions = storage.get(STORAGE_KEYS.TRANSACTIONS) || [];
+                const tx = {
+                    id: generateId(),
+                    amount: Math.abs(amountDiff),
+                    type: amountDiff > 0 ? 'EXPENSE' : 'INCOME',
+                    category: 'تسديد ديون (تعديل)',
+                    date: new Date().toISOString(),
+                    notes: `تعديل دفعة سابقة لدين: ${debts[debtIndex].personName || debts[debtIndex].borrower} ${amountDiff > 0 ? '(خصم إضافي)' : '(استرداد جزء)'}`,
+                    cardId: card.id,
+                    isSystem: true
+                };
+                if (amountDiff !== 0) {
+                    transactions.unshift(tx);
+                    storage.set(STORAGE_KEYS.TRANSACTIONS, transactions);
+                }
+            }
+        }
+
+        // Apply new values to the payment record itself
+        payments[paymentIndex].amount = newAmountFloat;
+        storage.set(STORAGE_KEYS.DEBT_PAYMENTS, payments);
+
+        // Re-calculate Total Paid for Debt
+        const debt = debts[debtIndex];
+        const totalPaid = payments.filter(p => p.debtId === debtId).reduce((sum, p) => sum + p.amount, 0);
+
+        // Fix Status
+        if (totalPaid >= debt.amount) {
+            debt.status = 'PAID';
+        } else {
+            debt.status = 'PENDING';
+        }
+
+        debts[debtIndex] = debt;
+        storage.set(STORAGE_KEYS.DEBTS, debts);
+
+        return debt;
+    },
 
     // Categories
     getCategories: () => storage.get(STORAGE_KEYS.CATEGORIES),
@@ -374,7 +559,8 @@ export const storageService = {
         task: data.task,
         category: data.category || 'عام',
         priority: data.priority || 'LOW',
-        isCompleted: false
+        isCompleted: false,
+        subtasks: []
     }),
     toggleTodo: (id) => {
         const todos = storage.get(STORAGE_KEYS.TODOS);
@@ -389,17 +575,52 @@ export const storageService = {
     updateTodo: (id, updates) => storageService.update(STORAGE_KEYS.TODOS, id, updates),
     deleteTodo: (id) => storageService.delete(STORAGE_KEYS.TODOS, id),
 
+    addSubtask: (todoId, text) => {
+        const todos = storage.get(STORAGE_KEYS.TODOS);
+        const index = todos.findIndex(t => t.id === todoId);
+        if (index !== -1) {
+            if (!todos[index].subtasks) todos[index].subtasks = [];
+            const newSubtask = {
+                id: generateId(),
+                text,
+                isCompleted: false,
+                createdAt: new Date().toISOString()
+            };
+            todos[index].subtasks.push(newSubtask);
+            storage.set(STORAGE_KEYS.TODOS, todos);
+            return todos[index];
+        }
+        return null;
+    },
+
+    toggleSubtask: (todoId, subtaskId) => {
+        const todos = storage.get(STORAGE_KEYS.TODOS);
+        const index = todos.findIndex(t => t.id === todoId);
+        if (index !== -1 && todos[index].subtasks) {
+            const subIndex = todos[index].subtasks.findIndex(st => st.id === subtaskId);
+            if (subIndex !== -1) {
+                todos[index].subtasks[subIndex].isCompleted = !todos[index].subtasks[subIndex].isCompleted;
+                storage.set(STORAGE_KEYS.TODOS, todos);
+                return todos[index];
+            }
+        }
+        return null;
+    },
+
+    deleteSubtask: (todoId, subtaskId) => {
+        const todos = storage.get(STORAGE_KEYS.TODOS);
+        const index = todos.findIndex(t => t.id === todoId);
+        if (index !== -1 && todos[index].subtasks) {
+            todos[index].subtasks = todos[index].subtasks.filter(st => st.id !== subtaskId);
+            storage.set(STORAGE_KEYS.TODOS, todos);
+            return todos[index];
+        }
+        return null;
+    },
+
     // Notifications
     getNotifications: () => storage.get(STORAGE_KEYS.NOTIFICATIONS).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
     markNotificationRead: (id) => storageService.update(STORAGE_KEYS.NOTIFICATIONS, id, { isRead: true }),
-
-    // Exchange Rate
-    getExchangeRate: () => storage.get(STORAGE_KEYS.EXCHANGE_RATE, { rate: 1530 }),
-    updateExchangeRate: (rate) => {
-        const data = { rate, lastUpdated: new Date().toISOString() };
-        storage.set(STORAGE_KEYS.EXCHANGE_RATE, data);
-        return data;
-    },
 
     // Goals
     getGoals: () => storage.get(STORAGE_KEYS.GOALS).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
@@ -420,8 +641,16 @@ export const storageService = {
                 }
             } else {
                 let remaining = target;
-                // Always use a mix of denominations for a "Challenge Box" feel
-                const denoms = [15000, 10000, 5000, 2000, 1000];
+
+                // Adjust block denominations so smaller targets map to smaller chunks
+                let denoms = [25000, 15000, 10000, 5000, 2000, 1000];
+                if (target <= 25000) {
+                    denoms = [2000, 1000, 500, 250];
+                } else if (target <= 50000) {
+                    denoms = [5000, 2000, 1000, 500];
+                } else if (target <= 100000) {
+                    denoms = [10000, 5000, 2000, 1000];
+                }
 
                 while (remaining > 0) {
                     const possible = denoms.filter(d => d <= remaining);
@@ -519,12 +748,13 @@ export const storageService = {
                         isRead: false
                     });
                 } else {
-                    // Update current day progress
+                    // Update current progress based on unit
                     const start = new Date(c.startDate);
                     const diffTime = Math.abs(now - start);
-                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-                    if (c.daysCompleted !== diffDays) {
-                        c.daysCompleted = diffDays;
+                    const unitFactor = c.durationUnit === 'HOURS' ? (1000 * 60 * 60) : (1000 * 60 * 60 * 24);
+                    const unitsPassed = Math.floor(diffTime / unitFactor);
+                    if (c.daysCompleted !== unitsPassed) {
+                        c.daysCompleted = unitsPassed;
                         updated = true;
                     }
                 }
@@ -538,11 +768,18 @@ export const storageService = {
     createChallenge: (data) => {
         const startDate = new Date();
         const duration = parseInt(data.duration || 7);
+        const unit = data.durationUnit || 'DAYS';
         const endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + duration);
+
+        if (unit === 'HOURS') {
+            endDate.setHours(endDate.getHours() + duration);
+        } else {
+            endDate.setDate(endDate.getDate() + duration);
+        }
 
         return storageService.save(STORAGE_KEYS.CHALLENGES, {
             ...data,
+            durationUnit: unit,
             startDate: startDate.toISOString(),
             endDate: endDate.toISOString(),
             status: 'ACTIVE',

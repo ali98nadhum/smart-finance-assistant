@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api/api';
-import { Plus, Target, Trash2, Edit2, Calendar, TrendingUp, ChevronLeft, Archive, ArrowRight, Flame, Trophy, Zap, Ban, Coffee, CheckCircle2 } from 'lucide-react';
+import { Plus, Target, Trash2, Edit2, Calendar, TrendingUp, ChevronLeft, Archive, ArrowRight, Flame, Trophy, Zap, Ban, Coffee, CheckCircle2, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CustomModal from '../components/CustomModal';
+import AmountInput from '../components/AmountInput';
 import confetti from 'canvas-confetti';
 
 
@@ -39,9 +40,19 @@ const Goals = () => {
     const [modal, setModal] = useState({ isOpen: false, id: null });
     const [newGoal, setNewGoal] = useState({ name: '', target: '', deadline: '', useGrid: false, type: 'SAVINGS' });
     const [allocationAmount, setAllocationAmount] = useState('');
+    const [goalForm, setGoalForm] = useState({ name: '', target: '', useGrid: true, presetCategory: '' });
     const [categories, setCategories] = useState([]);
     const [isCustom, setIsCustom] = useState(false);
-    const [customChallenge, setCustomChallenge] = useState({ name: '', duration: 7, categoryId: '', categoryName: '' });
+    const [customChallenge, setCustomChallenge] = useState({ name: '', duration: 7, durationUnit: 'DAYS', categoryId: '', categoryName: '' });
+
+
+
+    const [now, setNow] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => setNow(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
 
     useEffect(() => {
         fetchData();
@@ -70,11 +81,12 @@ const Goals = () => {
                 categoryId: data.categoryId,
                 categoryName: data.categoryName,
                 duration: data.duration,
+                durationUnit: data.durationUnit || 'DAYS', // Add durationUnit
                 icon: data.categoryId // simple mapping
             });
             setIsAddingChallenge(false);
             setIsCustom(false);
-            setCustomChallenge({ name: '', duration: 7, categoryId: '', categoryName: '' });
+            setCustomChallenge({ name: '', duration: 7, durationUnit: 'DAYS', categoryId: '', categoryName: '' });
             fetchData();
         } catch (error) {
             console.error("Error starting challenge", error);
@@ -195,6 +207,8 @@ const Goals = () => {
                 ))}
             </div>
 
+
+
             <div className="grid gap-6">
                 {view === 'CHALLENGES' ? (
                     challenges.length === 0 ? (
@@ -213,7 +227,30 @@ const Goals = () => {
                             const isFailed = c.status === 'FAILED';
                             const isCompleted = c.status === 'COMPLETED';
                             const duration = parseInt(c.duration);
-                            const progress = (c.daysCompleted / duration) * 100;
+
+                            // Determine Time Remaining Logic
+                            let remainingDisplay = '';
+                            let progress = 0;
+
+                            if (c.durationUnit === 'HOURS' && c.endDate && !isFailed && !isCompleted) {
+                                const end = new Date(c.endDate);
+                                const msRemaining = Math.max(0, end - now);
+                                const totalMs = duration * 60 * 60 * 1000;
+
+                                if (msRemaining === 0) {
+                                    // State should update on next fetch, mock it visually here
+                                    remainingDisplay = "00:00:00";
+                                    progress = 100;
+                                } else {
+                                    const h = Math.floor(msRemaining / (1000 * 60 * 60)).toString().padStart(2, '0');
+                                    const m = Math.floor((msRemaining % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
+                                    const s = Math.floor((msRemaining % (1000 * 60)) / 1000).toString().padStart(2, '0');
+                                    remainingDisplay = `${h}:${m}:${s}`;
+                                    progress = ((totalMs - msRemaining) / totalMs) * 100;
+                                }
+                            } else {
+                                progress = (c.daysCompleted / duration) * 100;
+                            }
 
                             return (
                                 <motion.div
@@ -228,7 +265,7 @@ const Goals = () => {
                                             </div>
                                             <div>
                                                 <h3 className="font-bold text-lg">{c.name}</h3>
-                                                <p className="text-xs text-gray-500">{c.categoryName} • {duration} أيام</p>
+                                                <p className="text-xs text-gray-500">{c.categoryName} • {duration} {c.durationUnit === 'HOURS' ? 'ساعة' : 'يوم'}</p>
                                             </div>
                                         </div>
                                         <button
@@ -244,9 +281,13 @@ const Goals = () => {
                                             <div className="flex justify-between items-end">
                                                 <div className="flex items-center gap-1.5">
                                                     <span className="text-3xl font-black text-primary">{c.daysCompleted}</span>
-                                                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">يوم مكتمل</span>
+                                                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">{c.durationUnit === 'HOURS' ? 'ساعة مكتملة' : 'يوم مكتمل'}</span>
                                                 </div>
-                                                <span className="text-xs font-bold text-primary opacity-50">{Math.round(progress)}%</span>
+                                                <div className="h-10 w-px bg-white/10 mx-2"></div>
+                                                <div className="text-left">
+                                                    <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">الهدف</div>
+                                                    <div className="text-sm font-black text-white">{duration} {c.durationUnit === 'HOURS' ? 'ساعة' : 'يوم'}</div>
+                                                </div>
                                             </div>
                                             <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
                                                 <motion.div
@@ -254,6 +295,18 @@ const Goals = () => {
                                                     animate={{ width: `${progress}%` }}
                                                     className="h-full bg-primary rounded-full shadow-[0_0_15px_rgba(255,255,255,0.3)]"
                                                 />
+                                            </div>
+                                            <div className="flex justify-between items-center px-2">
+                                                <p className="text-[10px] font-bold text-gray-400">بدأ: {new Date(c.startDate).toLocaleDateString('ar-IQ')}</p>
+                                                {c.durationUnit === 'HOURS' ? (
+                                                    <p className="text-xs text-secondary font-black tabular-nums font-mono">
+                                                        متبقي {remainingDisplay}
+                                                    </p>
+                                                ) : (
+                                                    <p className="text-xs text-secondary font-black">
+                                                        متبقي {Math.max(0, duration - c.daysCompleted)} أيام
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
                                     )}
@@ -488,8 +541,7 @@ const Goals = () => {
                                 {newGoal.type === 'SAVINGS' && (
                                     <div className="glass p-5 rounded-[2rem] border border-white/5">
                                         <label className="block text-xs text-gray-500 mb-2 text-right">المبلغ المستهدف (د.ع)</label>
-                                        <input
-                                            type="number"
+                                        <AmountInput
                                             className="w-full bg-transparent outline-none font-bold text-3xl text-right"
                                             placeholder="0"
                                             value={newGoal.target}
@@ -554,8 +606,7 @@ const Goals = () => {
                             <form onSubmit={handleAllocate} className="space-y-6">
                                 <div className="glass p-5 rounded-[2rem] border border-white/5">
                                     <label className="block text-xs text-gray-500 mb-2 text-right">المبلغ المراد ادخاره (د.ع)</label>
-                                    <input
-                                        type="number"
+                                    <AmountInput
                                         className="w-full bg-transparent outline-none font-bold text-3xl text-right"
                                         placeholder="0"
                                         value={allocationAmount}
@@ -648,15 +699,25 @@ const Goals = () => {
                                         />
                                     </div>
                                     <div className="glass p-5 rounded-[2rem] border border-white/5">
-                                        <label className="block text-xs text-gray-500 mb-2 text-right">المدة بالأيام</label>
-                                        <input
-                                            type="number"
-                                            className="w-full bg-transparent outline-none font-bold text-xl text-right"
-                                            placeholder="7"
-                                            value={customChallenge.duration}
-                                            onChange={(e) => setCustomChallenge({ ...customChallenge, duration: e.target.value })}
-                                            required
-                                        />
+                                        <label className="block text-xs text-gray-500 mb-2 text-right">المدة المحددة للتحدي</label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="number"
+                                                className="flex-[2] bg-transparent outline-none font-bold text-xl text-right"
+                                                placeholder="7"
+                                                value={customChallenge.duration}
+                                                onChange={(e) => setCustomChallenge({ ...customChallenge, duration: e.target.value })}
+                                                required
+                                            />
+                                            <select
+                                                className="flex-1 bg-white/5 outline-none font-bold text-sm px-4 rounded-xl cursor-pointer text-right appearance-none"
+                                                value={customChallenge.durationUnit}
+                                                onChange={(e) => setCustomChallenge({ ...customChallenge, durationUnit: e.target.value })}
+                                            >
+                                                <option value="DAYS" className="bg-dark text-white">يوم</option>
+                                                <option value="HOURS" className="bg-dark text-white">ساعة</option>
+                                            </select>
+                                        </div>
                                     </div>
                                     <div className="glass p-5 rounded-[2rem] border border-white/5">
                                         <label className="block text-xs text-gray-500 mb-4 text-right">التصنيف المحظور (الاختياري)</label>

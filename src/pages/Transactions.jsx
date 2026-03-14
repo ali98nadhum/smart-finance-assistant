@@ -4,6 +4,7 @@ import { Plus, Repeat, Calendar, Tag, ChevronDown, Download, Trash2, Smartphone,
 import { motion, AnimatePresence } from 'framer-motion';
 import CustomModal from '../components/CustomModal';
 import { PaymentFailed } from '../components/PaymentFeedback';
+import AmountInput from '../components/AmountInput';
 
 
 const PaymentSuccess = ({ isOpen, onClose }) => {
@@ -304,8 +305,7 @@ const Transactions = () => {
                                 <div className="space-y-4">
                                     <div className="glass p-4 rounded-2xl border border-white/5">
                                         <label className="block text-xs text-gray-500 mb-2">المبلغ (د.ع)</label>
-                                        <input
-                                            type="number"
+                                        <AmountInput
                                             className="w-full bg-transparent text-2xl font-bold outline-none"
                                             placeholder="0"
                                             value={newTx.amount}

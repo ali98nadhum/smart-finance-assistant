@@ -3,12 +3,15 @@ import { api } from '../api/api';
 import { Plus, Users, CheckCircle, Clock, ChevronDown, ChevronUp, Wallet, ArrowRight, Landmark, Edit2, Check, X, Trash2 } from 'lucide-react';
 
 import { motion, AnimatePresence } from 'framer-motion';
+import AmountInput from '../components/AmountInput';
 
 const Debts = () => {
     const [debts, setDebts] = useState([]);
     const [isAdding, setIsAdding] = useState(false);
     const [expandedId, setExpandedId] = useState(null);
     const [paymentAmount, setPaymentAmount] = useState('');
+    const [selectedCardId, setSelectedCardId] = useState('');
+    const [cards, setCards] = useState([]);
     const [storeForm, setStoreForm] = useState({ amount: '', type: 'SET', debtId: null });
     const [isAdjustingStore, setIsAdjustingStore] = useState(false);
     const [newDebt, setNewDebt] = useState({ amount: '', personName: '', type: 'OWED_BY_ME', notes: '' });
@@ -17,6 +20,8 @@ const Debts = () => {
     const [editingDebtId, setEditingDebtId] = useState(null);
     const [editForm, setEditForm] = useState({ personName: '', amount: '', notes: '' });
     const [view, setView] = useState('ACTIVE'); // 'ACTIVE' or 'ARCHIVED'
+    const [editingPaymentId, setEditingPaymentId] = useState(null);
+    const [editPaymentForm, setEditPaymentForm] = useState({ amount: '', cardId: '', debtId: null });
 
     const VIEWS = [
         { id: 'ACTIVE', label: 'الديون النشطة' },
@@ -25,7 +30,17 @@ const Debts = () => {
 
     useEffect(() => {
         fetchDebts();
+        fetchCards();
     }, []);
+
+    const fetchCards = async () => {
+        try {
+            const res = await api.getCards();
+            setCards(res.data);
+        } catch (error) {
+            console.error("Error fetching cards", error);
+        }
+    };
 
     const fetchDebts = async () => {
         try {
@@ -66,12 +81,33 @@ const Debts = () => {
     const handleAddPayment = async (debtId) => {
         if (!paymentAmount) return;
         try {
-            await api.addPayment({ debtId, amount: parseFloat(paymentAmount) });
+            await api.addPayment({
+                debtId,
+                amount: parseFloat(paymentAmount),
+                cardId: selectedCardId || null
+            });
             setPaymentAmount('');
+            setSelectedCardId('');
             fetchDebts();
+            fetchCards();
 
         } catch (error) {
+            alert(error.message);
             console.error("Error adding payment", error);
+        }
+    };
+
+    const handleUpdatePayment = async (debtId) => {
+        if (!editPaymentForm.amount) return;
+        try {
+            await api.updatePayment(debtId, editingPaymentId, parseFloat(editPaymentForm.amount), editPaymentForm.cardId || null);
+            setEditingPaymentId(null);
+            setEditPaymentForm({ amount: '', cardId: '', debtId: null });
+            fetchDebts();
+            fetchCards();
+        } catch (error) {
+            alert(error.message);
+            console.error("Error updating payment", error);
         }
     };
 
@@ -341,10 +377,57 @@ const Debts = () => {
                                                         <p className="text-[10px] text-gray-600 text-center py-2">لا توجد دفعات مسجلة</p>
                                                     ) : (
                                                         debt.payments.map((p, i) => (
-                                                            <div key={p.id} className="flex justify-between items-center text-xs p-3 glass rounded-xl border border-white/5">
-                                                                <span className="font-bold text-primary">الدفعة #{debt.payments.length - i}</span>
-                                                                <span className="font-black">{p.amount.toLocaleString('en-US')} د.ع</span>
-                                                                <span className="text-[10px] text-gray-500">{new Date(p.createdAt).toLocaleDateString('en-US')}</span>
+                                                            <div key={p.id} className="flex justify-between items-center text-xs p-3 glass rounded-xl border border-white/5 group/pay">
+                                                                {editingPaymentId === p.id ? (
+                                                                    <div className="flex flex-col sm:flex-row gap-2 w-full">
+                                                                        <div className="flex-1 flex gap-2">
+                                                                            <AmountInput
+                                                                                placeholder="المبلغ"
+                                                                                className="w-1/2 bg-white/5 p-2 rounded-xl outline-none font-bold"
+                                                                                value={editPaymentForm.amount}
+                                                                                onChange={(e) => setEditPaymentForm({ ...editPaymentForm, amount: e.target.value })}
+                                                                            />
+                                                                            <select
+                                                                                className="w-1/2 bg-white/5 p-2 rounded-xl outline-none font-bold appearance-none"
+                                                                                value={editPaymentForm.cardId}
+                                                                                onChange={(e) => setEditPaymentForm({ ...editPaymentForm, cardId: e.target.value })}
+                                                                            >
+                                                                                <option value="" className="bg-dark">بدون بطاقة</option>
+                                                                                {cards.map(c => (
+                                                                                    <option key={c.id} value={c.id} className="bg-dark">
+                                                                                        {c.name}
+                                                                                    </option>
+                                                                                ))}
+                                                                            </select>
+                                                                        </div>
+                                                                        <div className="flex gap-2">
+                                                                            <button onClick={() => handleUpdatePayment(debt.id)} className="bg-green-500/20 text-green-500 p-2 rounded-xl hover:bg-green-500 hover:text-white transition-colors">
+                                                                                <Check size={16} />
+                                                                            </button>
+                                                                            <button onClick={() => setEditingPaymentId(null)} className="bg-red-500/20 text-red-500 p-2 rounded-xl hover:bg-red-500 hover:text-white transition-colors">
+                                                                                <X size={16} />
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="font-bold text-primary">الدفعة #{debt.payments.length - i}</span>
+                                                                            <button
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    setEditingPaymentId(p.id);
+                                                                                    setEditPaymentForm({ amount: p.amount, cardId: '', debtId: debt.id });
+                                                                                }}
+                                                                                className="p-1 text-gray-500 hover:text-primary transition-colors opacity-100 sm:opacity-0 sm:group-hover/pay:opacity-100"
+                                                                            >
+                                                                                <Edit2 size={12} />
+                                                                            </button>
+                                                                        </div>
+                                                                        <span className="font-black">{p.amount.toLocaleString('en-US')} د.ع</span>
+                                                                        <span className="text-[10px] text-gray-500">{new Date(p.createdAt).toLocaleDateString('en-US')}</span>
+                                                                    </>
+                                                                )}
                                                             </div>
                                                         ))
                                                     )}
@@ -353,19 +436,32 @@ const Debts = () => {
                                                 {/* Payment Action */}
                                                 {debt.status !== 'PAID' && (
                                                     <div className="space-y-3 pt-2">
-                                                        <div className="flex gap-2">
-                                                            <input
-                                                                type="number"
-                                                                placeholder="مبلغ الدفعة"
-                                                                className="flex-1 glass p-4 rounded-2xl outline-none text-sm font-bold"
-                                                                value={paymentAmount}
-                                                                onChange={(e) => setPaymentAmount(e.target.value)}
-                                                            />
+                                                        <div className="flex flex-col sm:flex-row gap-2">
+                                                            <div className="flex-1 flex gap-2">
+                                                                <AmountInput
+                                                                    placeholder="مبلغ الدفعة"
+                                                                    className="w-1/2 glass p-4 rounded-2xl outline-none text-sm font-bold"
+                                                                    value={paymentAmount}
+                                                                    onChange={(e) => setPaymentAmount(e.target.value)}
+                                                                />
+                                                                <select
+                                                                    className="w-1/2 glass p-4 rounded-2xl outline-none text-sm font-bold bg-transparent appearance-none"
+                                                                    value={selectedCardId}
+                                                                    onChange={(e) => setSelectedCardId(e.target.value)}
+                                                                >
+                                                                    <option value="" className="bg-dark text-white">بدون بطاقة</option>
+                                                                    {cards.map(c => (
+                                                                        <option key={c.id} value={c.id} className="bg-dark text-white">
+                                                                            {c.name} ({Math.floor(c.balance).toLocaleString()} د.ع)
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
                                                             <button
                                                                 onClick={() => handleAddPayment(debt.id)}
-                                                                className="bg-primary px-6 rounded-2xl font-bold text-sm shadow-lg shadow-primary/20 active:scale-95 transition-transform"
+                                                                className="bg-primary px-6 py-4 sm:py-0 rounded-2xl font-bold text-sm shadow-lg shadow-primary/20 active:scale-95 transition-transform whitespace-nowrap"
                                                             >
-                                                                تسديد
+                                                                تسديد الدفعة
                                                             </button>
                                                         </div>
 
@@ -412,7 +508,7 @@ const Debts = () => {
                                     </div>
                                     <div className="glass p-4 rounded-2xl border border-white/5">
                                         <label className="block text-xs text-gray-500 mb-2">المبلغ الإجمالي (د.ع)</label>
-                                        <input type="number" className="w-full bg-transparent text-2xl font-bold outline-none" placeholder="0" value={newDebt.amount} onChange={(e) => setNewDebt({ ...newDebt, amount: e.target.value })} required />
+                                        <AmountInput className="w-full bg-transparent text-2xl font-bold outline-none" placeholder="0" value={newDebt.amount} onChange={(e) => setNewDebt({ ...newDebt, amount: e.target.value })} required />
                                     </div>
                                     <div className="glass p-4 rounded-2xl border border-white/5">
                                         <label className="block text-xs text-gray-500 mb-2">ملاحظات (اختياري)</label>
@@ -460,8 +556,7 @@ const Debts = () => {
                                 </div>
                                 <div className="glass p-4 rounded-2xl border border-white/5">
                                     <label className="text-xs text-gray-500 block mb-1">المبلغ (د.ع)</label>
-                                    <input
-                                        type="number"
+                                    <AmountInput
                                         className="w-full bg-transparent text-2xl font-black focus:outline-none"
                                         placeholder="0"
                                         value={storeForm.amount}
@@ -515,8 +610,7 @@ const Debts = () => {
                                     </div>
                                     <div className="glass p-4 rounded-2xl border border-white/5">
                                         <label className="block text-xs text-gray-500 mb-2 text-right">المبلغ الإجمالي (د.ع)</label>
-                                        <input
-                                            type="number"
+                                        <AmountInput
                                             className="w-full bg-transparent text-2xl font-bold outline-none text-right"
                                             placeholder="0"
                                             value={editForm.amount}
