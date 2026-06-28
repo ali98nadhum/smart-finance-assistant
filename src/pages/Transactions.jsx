@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api/api';
-import { Plus, Repeat, Calendar, Tag, ChevronDown, Download, Trash2, Smartphone, CreditCard, CheckCircle2 } from 'lucide-react';
+import { Plus, Repeat, Calendar, Tag, ChevronDown, Download, Trash2, Smartphone, CreditCard, CheckCircle2, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CustomModal from '../components/CustomModal';
 import { PaymentFailed } from '../components/PaymentFeedback';
@@ -78,6 +78,10 @@ const Transactions = () => {
     const [showSuccess, setShowSuccess] = useState(false);
     const [showFailed, setShowFailed] = useState(false);
     const [modal, setModal] = useState({ isOpen: false, id: null });
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
+    const [deleteBatchModal, setDeleteBatchModal] = useState(false);
+    const [deleteAllModal, setDeleteAllModal] = useState(false);
     const [newTx, setNewTx] = useState({
         amount: '',
         description: '',
@@ -175,6 +179,34 @@ const Transactions = () => {
         }
     };
 
+    const toggleSelect = (id) => {
+        setSelectedIds(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
+    };
+
+    const handleConfirmBatchDelete = async () => {
+        try {
+            await api.deleteTransactions(selectedIds);
+            setSelectedIds([]);
+            setIsSelectionMode(false);
+            setDeleteBatchModal(false);
+            setPage(1);
+            fetchData(false);
+        } catch (error) {
+            console.error("Error deleting batch", error);
+        }
+    };
+
+    const handleConfirmDeleteAll = async () => {
+        try {
+            await api.deleteAllTransactions();
+            setDeleteAllModal(false);
+            setPage(1);
+            fetchData(false);
+        } catch (error) {
+            console.error("Error deleting all", error);
+        }
+    };
+
     const exportToCSV = () => {
         const headers = ["التاريخ", "الوصف", "المبلغ", "القسم", "البطاقة", "النوع"];
         const rows = transactions.map(tx => [
@@ -204,22 +236,48 @@ const Transactions = () => {
             <div className="pb-32 pt-8 px-6 animate-fade-in" dir="rtl">
                 <div className="flex justify-between items-center mb-8">
                     <h1 className="text-2xl font-bold">المعاملات</h1>
-                    <div className="flex gap-2">
-                        <button
-                            onClick={exportToCSV}
-                            className="p-3 glass rounded-2xl transition-all opacity-50 hover:opacity-100"
-                            title="تصدير بيانات"
-                        >
-                            <Download size={20} />
-                        </button>
+                    <div className="flex gap-2 items-center">
+                        {transactions.length > 0 && (
+                            <>
+                                <button
+                                    onClick={() => {
+                                        setIsSelectionMode(!isSelectionMode);
+                                        setSelectedIds([]);
+                                    }}
+                                    className={`px-3 py-2.5 rounded-2xl text-xs font-bold transition-all ${isSelectionMode ? 'bg-primary text-black' : 'glass opacity-70 hover:opacity-100'}`}
+                                >
+                                    {isSelectionMode ? 'إلغاء التحديد' : 'تحديد متعدد'}
+                                </button>
+                                <button
+                                    onClick={() => setDeleteAllModal(true)}
+                                    className="p-3 bg-red-500/20 text-red-500 rounded-2xl transition-all hover:bg-red-500 hover:text-white"
+                                    title="حذف كل المعاملات"
+                                >
+                                    <Trash2 size={20} />
+                                </button>
+                            </>
+                        )}
+
                         <button
                             onClick={() => setIsAdding(true)}
-                            className="p-3 bg-primary rounded-2xl shadow-lg shadow-primary/20 active:scale-95 transition-transform"
+                            className="p-3 bg-primary rounded-2xl shadow-lg shadow-primary/20 active:scale-95 transition-transform text-black"
                         >
                             <Plus size={24} />
                         </button>
                     </div>
                 </div>
+
+                {isSelectionMode && selectedIds.length > 0 && (
+                    <div className="mb-6 p-4 glass rounded-2xl border border-red-500/30 flex justify-between items-center bg-red-500/10 animate-fade-in">
+                        <span className="font-bold text-sm">تم تحديد {selectedIds.length} معاملة</span>
+                        <button
+                            onClick={() => setDeleteBatchModal(true)}
+                            className="px-4 py-2 bg-red-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-red-500/20"
+                        >
+                            حذف المحدد
+                        </button>
+                    </div>
+                )}
 
                 <div className="space-y-4">
                     {transactions.length === 0 ? (
@@ -229,8 +287,17 @@ const Transactions = () => {
                         </div>
                     ) : (
                         transactions.map((tx) => (
-                            <div key={tx.id} className="glass p-5 rounded-[2rem] flex items-center justify-between border border-white/5">
+                            <div
+                                key={tx.id}
+                                onClick={() => isSelectionMode && toggleSelect(tx.id)}
+                                className={`glass p-5 rounded-[2rem] flex items-center justify-between border transition-all ${isSelectionMode ? 'cursor-pointer' : ''} ${selectedIds.includes(tx.id) ? 'border-primary bg-primary/10' : 'border-white/5'}`}
+                            >
                                 <div className="flex items-center gap-4">
+                                    {isSelectionMode && (
+                                        <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 ${selectedIds.includes(tx.id) ? 'bg-primary border-primary text-black' : 'border-gray-500'}`}>
+                                            {selectedIds.includes(tx.id) && <CheckCircle2 size={16} />}
+                                        </div>
+                                    )}
                                     <div className={`p-4 rounded-2xl ${tx.type === 'EXPENSE' ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>
                                         {tx.type === 'EXPENSE' ? <Calendar size={20} /> : <Plus size={20} />}
                                     </div>
@@ -256,12 +323,14 @@ const Transactions = () => {
                                         </p>
                                         <p className="text-[10px] text-gray-500 mt-1">{tx.card?.name || 'بطاقة محذوفة'}</p>
                                     </div>
-                                    <button
-                                        onClick={() => handleDeleteTx(tx.id)}
-                                        className="p-3 glass rounded-2xl text-red-500 opacity-60 hover:opacity-100 transition-opacity"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
+                                    {!isSelectionMode && (
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleDeleteTx(tx.id); }}
+                                            className="p-3 glass rounded-2xl text-red-500 opacity-60 hover:opacity-100 transition-opacity"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         ))
@@ -376,6 +445,22 @@ const Transactions = () => {
                 onConfirm={confirmDelete}
                 title="حذف المعاملة"
                 message="هل أنت متأكد من مسح هذه المعاملة؟ لن يتم تعديل رصيد البطاقة."
+                type="confirm"
+            />
+            <CustomModal
+                isOpen={deleteBatchModal}
+                onClose={() => setDeleteBatchModal(false)}
+                onConfirm={handleConfirmBatchDelete}
+                title="حذف المعاملات المحددة"
+                message={`هل أنت متأكد من حذف ${selectedIds.length} معاملة؟ لن يمكن استرجاعها.`}
+                type="confirm"
+            />
+            <CustomModal
+                isOpen={deleteAllModal}
+                onClose={() => setDeleteAllModal(false)}
+                onConfirm={handleConfirmDeleteAll}
+                title="حذف جميع المعاملات"
+                message="تحذير! هل أنت متأكد من مسح كافة المعاملات المسجلة في التطبيق بالكامل؟"
                 type="confirm"
             />
             <PaymentFailed

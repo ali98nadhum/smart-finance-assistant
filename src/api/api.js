@@ -13,6 +13,8 @@ export const api = {
     getTransactions: (page, limit) => Promise.resolve({ data: storageService.getTransactions(page, limit) }),
     createTransaction: (data) => Promise.resolve({ data: storageService.createTransaction(data) }),
     deleteTransaction: (id) => Promise.resolve({ data: storageService.deleteTransaction(id) }),
+    deleteTransactions: (ids) => Promise.resolve({ data: storageService.deleteTransactions(ids) }),
+    deleteAllTransactions: () => Promise.resolve({ data: storageService.deleteAllTransactions() }),
 
     // Budget
     getBudgetStatus: (date) => Promise.resolve({ data: storageService.getBudgetStatus(date) }),
@@ -81,4 +83,20 @@ export const api = {
     getChallenges: () => Promise.resolve({ data: storageService.getChallenges() }),
     createChallenge: (data) => Promise.resolve({ data: storageService.createChallenge(data) }),
     deleteChallenge: (id) => Promise.resolve({ data: storageService.deleteChallenge(id) }),
+
+    // Future Plans
+    getFuturePlans: () => Promise.resolve({ data: storageService.getFuturePlans() }),
+    createFuturePlan: (data) => Promise.resolve({ data: storageService.createFuturePlan(data) }),
+    updateFuturePlan: (id, data) => Promise.resolve({ data: storageService.updateFuturePlan(id, data) }),
+    deleteFuturePlan: (id) => Promise.resolve({ data: storageService.deleteFuturePlan(id) }),
+
+    // Future Projects
+    getFutureProjects: () => Promise.resolve({ data: storageService.getFutureProjects() }),
+    createFutureProject: (data) => Promise.resolve({ data: storageService.createFutureProject(data) }),
+    updateFutureProject: (id, data) => Promise.resolve({ data: storageService.updateFutureProject(id, data) }),
+    deleteFutureProject: (id) => Promise.resolve({ data: storageService.deleteFutureProject(id) }),
+
+    // Projects Budget
+    getProjectsBudget: () => Promise.resolve({ data: storageService.getProjectsBudget() }),
+    updateProjectsBudget: (data) => Promise.resolve({ data: storageService.updateProjectsBudget(data) })
 };

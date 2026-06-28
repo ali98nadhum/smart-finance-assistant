@@ -12,7 +12,10 @@ const STORAGE_KEYS = {
     GOALS: 'finance_goals',
     CHALLENGES: 'finance_challenges',
     SECURITY_PIN: 'finance_security_pin',
-    BUDGET_SETTINGS: 'finance_budget_settings'
+    BUDGET_SETTINGS: 'finance_budget_settings',
+    FUTURE_PLANS: 'finance_future_plans',
+    FUTURE_PROJECTS: 'finance_future_projects',
+    PROJECTS_BUDGET: 'finance_projects_budget'
 };
 
 const DEFAULT_CATEGORIES = [
@@ -57,6 +60,14 @@ const generateId = () => {
 if (!localStorage.getItem(STORAGE_KEYS.CATEGORIES)) storage.set(STORAGE_KEYS.CATEGORIES, DEFAULT_CATEGORIES);
 if (!localStorage.getItem(STORAGE_KEYS.CARDS)) storage.set(STORAGE_KEYS.CARDS, DEFAULT_CARDS);
 if (localStorage.getItem(STORAGE_KEYS.SAVINGS) === null) storage.set(STORAGE_KEYS.SAVINGS, 0);
+
+const getLocalDayId = (dateVal) => {
+    if (!dateVal) return new Date().toLocaleDateString('en-CA');
+    if (typeof dateVal === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateVal)) return dateVal;
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return new Date().toLocaleDateString('en-CA');
+    return d.toLocaleDateString('en-CA');
+};
 
 export const storageService = {
     // Basic Persistence
@@ -153,36 +164,7 @@ export const storageService = {
 
     // Budgets
     getBudgetStatus: (dateStr) => {
-        const date = dateStr ? new Date(dateStr) : new Date();
-        const dailyId = date.toISOString().split('T')[0];
-
-        // 0: Sunday, 1: Monday, ... 6: Saturday
-        const currentDay = date.getDay();
-        const storedSettings = storage.get(STORAGE_KEYS.BUDGET_SETTINGS);
-        const budgetSettings = (storedSettings && Array.isArray(storedSettings.activeDays))
-            ? storedSettings
-            : { activeDays: [0, 1, 2, 3, 4, 5, 6] };
-
-        // Check if today is an active budget day
-        const isActiveDay = budgetSettings.activeDays.includes(currentDay);
-
-        // Helper to get remaining active days in the current month
-        const getRemainingActiveDaysInMonth = (currentDate, activeDays) => {
-            const year = currentDate.getFullYear();
-            const month = currentDate.getMonth();
-            const lastDay = new Date(year, month + 1, 0).getDate();
-            let count = 0;
-
-            for (let d = currentDate.getDate(); d <= lastDay; d++) {
-                const checkDate = new Date(year, month, d);
-                if (activeDays.includes(checkDate.getDay())) {
-                    count++;
-                }
-            }
-            return count;
-        };
-
-        const remainingActiveDays = getRemainingActiveDaysInMonth(date, budgetSettings.activeDays);
+        const dailyId = getLocalDayId(dateStr);
 
         const txs = storage.get(STORAGE_KEYS.TRANSACTIONS);
         const cards = storage.get(STORAGE_KEYS.CARDS);
@@ -192,30 +174,26 @@ export const storageService = {
         const spent = txs
             .filter(tx =>
                 tx.type === 'EXPENSE' &&
-                tx.date &&
-                tx.date.startsWith(dailyId) &&
+                getLocalDayId(tx.date || tx.createdAt) === dailyId &&
                 budgetedCardIds.includes(tx.cardId)
             )
             .reduce((acc, tx) => acc + parseFloat(tx.amount || 0), 0);
 
-        // Limit defaults to 0 if today is not an active spend day
+        const budgets = storage.get(STORAGE_KEYS.BUDGETS);
+        const budgetRecord = budgets.find(b => getLocalDayId(b.date) === dailyId);
         let limit = 0;
-
-        if (isActiveDay) {
-            limit = budgetedCards.reduce((acc, card) => {
-                const cardBalance = parseFloat(card.balance || 0);
-                // If there are remaining active days, divide balance by them.
-                // Otherwise fallback to 1 to avoid division by zero.
-                const dailyShare = remainingActiveDays > 0 ? (cardBalance / remainingActiveDays) : cardBalance;
-                return acc + dailyShare;
-            }, 0);
+        if (budgetRecord) {
+            limit = parseFloat(budgetRecord.dailyLimit || 0);
+        } else if (budgets.length > 0) {
+            const sortedBudgets = [...budgets].sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
+            limit = parseFloat(sortedBudgets[0].dailyLimit || 0);
         }
 
         return {
             budget: limit,
             spent,
             remaining: limit > 0 ? limit - spent : 0,
-            isActiveDay
+            isActiveDay: true
         };
     },
 
@@ -232,21 +210,22 @@ export const storageService = {
 
     upsertBudget: (data) => {
         const budgets = storage.get(STORAGE_KEYS.BUDGETS);
-        const dateValue = data.date ? new Date(data.date) : new Date();
-        const dateStr = dateValue.toISOString().split('T')[0];
-        const index = budgets.findIndex(b => b.date && b.date.startsWith(dateStr));
+        const dailyId = getLocalDayId(data.date);
+        const index = budgets.findIndex(b => getLocalDayId(b.date) === dailyId);
 
         const dailyLimit = parseFloat(data.dailyLimit || 0);
+        const timestamp = new Date().toISOString();
 
         if (index !== -1) {
-            budgets[index] = { ...budgets[index], dailyLimit, date: dateValue.toISOString() };
+            budgets[index] = { ...budgets[index], dailyLimit, date: dailyId, updatedAt: timestamp };
             storage.set(STORAGE_KEYS.BUDGETS, budgets);
             return budgets[index];
         } else {
             const newBudget = {
                 id: generateId(),
                 dailyLimit,
-                date: dateValue.toISOString()
+                date: dailyId,
+                createdAt: timestamp
             };
             budgets.push(newBudget);
             storage.set(STORAGE_KEYS.BUDGETS, budgets);
@@ -256,9 +235,9 @@ export const storageService = {
 
     // Stats
     getDailyStats: (dateStr) => {
-        const { transactions: txs } = storageService.getTransactions(1, 1000);
-        const date = dateStr ? dateStr.split('T')[0] : new Date().toISOString().split('T')[0];
-        const dayTxs = txs.filter(tx => tx.date && tx.date.startsWith(date) && tx.type === 'EXPENSE');
+        const { transactions: txs } = storageService.getTransactions(1, 10000);
+        const targetDate = getLocalDayId(dateStr);
+        const dayTxs = txs.filter(tx => getLocalDayId(tx.date || tx.createdAt) === targetDate && tx.type === 'EXPENSE');
 
         const byCat = dayTxs.reduce((acc, tx) => {
             const catName = tx.category?.name || 'غير مصنف';
@@ -267,13 +246,13 @@ export const storageService = {
         }, {});
 
         return {
-            byCategory: Object.entries(byCat).map(([name, amount]) => ({ name, amount })),
+            byCategory: Object.entries(byCat).map(([name, amount]) => ({ name, amount })).sort((a, b) => b.amount - a.amount),
             hourly: []
         };
     },
 
     getRangeStats: (range) => {
-        const { transactions: txs } = storageService.getTransactions(1, 1000);
+        const { transactions: txs } = storageService.getTransactions(1, 10000);
         const now = new Date();
         now.setHours(0, 0, 0, 0);
 
@@ -285,14 +264,13 @@ export const storageService = {
             startDate = new Date(now);
             startDate.setDate(startDate.getDate() - days + 1);
         } else {
-            // Calendar month view: start from the 1st of the current month
             startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-            // Show the full month on the timeline
             const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
             days = endDate.getDate();
         }
 
-        const rangeTxs = txs.filter(tx => tx.type === 'EXPENSE' && new Date(tx.date) >= startDate);
+        const startDayId = getLocalDayId(startDate);
+        const rangeTxs = txs.filter(tx => tx.type === 'EXPENSE' && getLocalDayId(tx.date || tx.createdAt) >= startDayId);
 
         const byCat = rangeTxs.reduce((acc, tx) => {
             const catName = tx.category?.name || 'غير مصنف';
@@ -304,15 +282,15 @@ export const storageService = {
         for (let i = 0; i < days; i++) {
             const d = new Date(startDate);
             d.setDate(d.getDate() + i);
-            const dateStr = d.toISOString().split('T')[0];
+            const dateStr = getLocalDayId(d);
             const amount = rangeTxs
-                .filter(tx => tx.date && tx.date.startsWith(dateStr))
+                .filter(tx => getLocalDayId(tx.date || tx.createdAt) === dateStr)
                 .reduce((acc, tx) => acc + (tx.amount || 0), 0);
             timeline.push({ date: dateStr, amount });
         }
 
         return {
-            byCategory: Object.entries(byCat).map(([name, amount]) => ({ name, amount })),
+            byCategory: Object.entries(byCat).map(([name, amount]) => ({ name, amount })).sort((a, b) => b.amount - a.amount),
             timeline
         };
     },
@@ -329,6 +307,16 @@ export const storageService = {
             return true;
         }
         return false;
+    },
+    deleteTransactions: (ids) => {
+        const transactions = storage.get(STORAGE_KEYS.TRANSACTIONS);
+        const filtered = transactions.filter(t => !ids.includes(t.id));
+        storage.set(STORAGE_KEYS.TRANSACTIONS, filtered);
+        return true;
+    },
+    deleteAllTransactions: () => {
+        storage.set(STORAGE_KEYS.TRANSACTIONS, []);
+        return true;
     },
     updateCard: (id, updates) => storageService.update(STORAGE_KEYS.CARDS, id, updates),
     deleteCard: (id) => {
@@ -792,5 +780,57 @@ export const storageService = {
     // Security
     getPin: () => storage.get(STORAGE_KEYS.SECURITY_PIN, null),
     setPin: (pin) => storage.set(STORAGE_KEYS.SECURITY_PIN, pin),
-    verifyPin: (pin) => storage.get(STORAGE_KEYS.SECURITY_PIN, null) === pin
+    verifyPin: (pin) => storage.get(STORAGE_KEYS.SECURITY_PIN, null) === pin,
+
+    // Future Plans (الخطط المالية للأشهر القادمة)
+    getFuturePlans: () => storage.get(STORAGE_KEYS.FUTURE_PLANS).sort((a, b) => (a.monthYear || '').localeCompare(b.monthYear || '')),
+    createFuturePlan: (data) => storageService.save(STORAGE_KEYS.FUTURE_PLANS, {
+        monthYear: data.monthYear || new Date().toISOString().slice(0, 7),
+        expectedIncome: parseFloat(data.expectedIncome || 0),
+        expectedExpenses: parseFloat(data.expectedExpenses || 0),
+        targetSavings: parseFloat(data.targetSavings || 0),
+        notes: data.notes || ''
+    }),
+    updateFuturePlan: (id, updates) => storageService.update(STORAGE_KEYS.FUTURE_PLANS, id, {
+        ...updates,
+        ...(updates.expectedIncome !== undefined && { expectedIncome: parseFloat(updates.expectedIncome) }),
+        ...(updates.expectedExpenses !== undefined && { expectedExpenses: parseFloat(updates.expectedExpenses) }),
+        ...(updates.targetSavings !== undefined && { targetSavings: parseFloat(updates.targetSavings) })
+    }),
+    deleteFuturePlan: (id) => storageService.delete(STORAGE_KEYS.FUTURE_PLANS, id),
+
+    // Future Projects (المشاريع المخطط لها)
+    getFutureProjects: () => storage.get(STORAGE_KEYS.FUTURE_PROJECTS).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)),
+    createFutureProject: (data) => storageService.save(STORAGE_KEYS.FUTURE_PROJECTS, {
+        name: data.name || 'مشروع جديد',
+        description: data.description || '',
+        costMin: parseFloat(data.costMin !== undefined ? data.costMin : (data.estimatedCost || 0)),
+        costMax: parseFloat(data.costMax !== undefined ? data.costMax : (data.estimatedCost || 0)),
+        estimatedCost: parseFloat(data.costMax !== undefined ? data.costMax : (data.estimatedCost || 0)),
+        targetMonth: data.targetMonth !== undefined ? data.targetMonth : '',
+        priority: data.priority || 'MEDIUM', // HIGH, MEDIUM, LOW
+        status: data.status || 'IDEA', // IDEA, PLANNING, READY, COMPLETED
+        category: data.category || 'BUSINESS', // BUSINESS, INVESTMENT, PERSONAL, EDUCATION
+        icon: data.icon || 'Briefcase'
+    }),
+    updateFutureProject: (id, updates) => storageService.update(STORAGE_KEYS.FUTURE_PROJECTS, id, {
+        ...updates,
+        ...(updates.costMin !== undefined && { costMin: parseFloat(updates.costMin) }),
+        ...(updates.costMax !== undefined && { costMax: parseFloat(updates.costMax) }),
+        ...(updates.estimatedCost !== undefined && { estimatedCost: parseFloat(updates.estimatedCost) })
+    }),
+    deleteFutureProject: (id) => storageService.delete(STORAGE_KEYS.FUTURE_PROJECTS, id),
+
+    // Projects Budget Settings (ميزانية المشاريع والإضافة الشهرية)
+    getProjectsBudget: () => storage.get(STORAGE_KEYS.PROJECTS_BUDGET, { startingCapital: 0, monthlyAddition: 0, customMonthlyAdditions: {} }),
+    updateProjectsBudget: (data) => {
+        const current = storage.get(STORAGE_KEYS.PROJECTS_BUDGET, { startingCapital: 0, monthlyAddition: 0, customMonthlyAdditions: {} });
+        const updated = {
+            startingCapital: data.startingCapital !== undefined ? parseFloat(data.startingCapital || 0) : current.startingCapital,
+            monthlyAddition: data.monthlyAddition !== undefined ? parseFloat(data.monthlyAddition || 0) : current.monthlyAddition,
+            customMonthlyAdditions: data.customMonthlyAdditions !== undefined ? data.customMonthlyAdditions : (current.customMonthlyAdditions || {})
+        };
+        storage.set(STORAGE_KEYS.PROJECTS_BUDGET, updated);
+        return updated;
+    }
 };

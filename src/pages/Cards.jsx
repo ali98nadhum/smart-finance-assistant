@@ -306,20 +306,6 @@ const Cards = () => {
                                     </button>
                                 </div>
 
-                                {newCard.isBudgeted && (
-                                    <div className="glass p-5 rounded-[2rem] border border-white/5">
-                                        <label className="block text-xs text-gray-500 mb-2 text-right">مدة الصرف المسموحة (بالأيام)</label>
-                                        <input
-                                            type="number"
-                                            className="w-full bg-transparent outline-none font-bold text-xl text-right"
-                                            placeholder="مثال: 30"
-                                            value={newCard.allowedDays}
-                                            onChange={(e) => setNewCard({ ...newCard, allowedDays: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                )}
-
                                 <div className="glass p-5 rounded-[2rem] border border-white/5">
                                     <label className="block text-xs text-gray-500 mb-4 text-right">المخصصات الفرعية (تقسيم الرصيد)</label>
                                     <div className="space-y-2 mb-3">
@@ -420,20 +406,6 @@ const Cards = () => {
                                         <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${editForm.isBudgeted ? 'left-7' : 'left-1'}`} />
                                     </button>
                                 </div>
-
-                                {editForm.isBudgeted && (
-                                    <div className="glass p-5 rounded-[2rem] border border-white/5">
-                                        <label className="block text-xs text-gray-500 mb-2 text-right">مدة الصرف المسموحة (بالأيام)</label>
-                                        <input
-                                            type="number"
-                                            className="w-full bg-transparent outline-none font-bold text-xl text-right"
-                                            placeholder="مثال: 30"
-                                            value={editForm.allowedDays}
-                                            onChange={(e) => setEditForm({ ...editForm, allowedDays: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                )}
 
                                 <div className="glass p-5 rounded-[2rem] border border-white/5">
                                     <label className="block text-xs text-gray-500 mb-4 text-right">المخصصات الفرعية (تقسيم الرصيد)</label>

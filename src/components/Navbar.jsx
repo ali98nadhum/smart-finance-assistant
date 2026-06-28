@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, CreditCard, Repeat as TransactionIcon, PieChart, Users as Wallet, CheckSquare, Target, MoreHorizontal, X } from 'lucide-react';
+import { Home, CreditCard, Repeat as TransactionIcon, PieChart, Users as Wallet, CheckSquare, Target, MoreHorizontal, X, Rocket } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Navbar = () => {
@@ -18,6 +18,7 @@ const Navbar = () => {
         { name: 'الديون', icon: Wallet, path: '/debts' },
         { name: 'المهام', icon: CheckSquare, path: '/todos' },
         { name: 'الأهداف', icon: Target, path: '/goals' },
+        { name: 'الخطط والمشاريع', icon: Rocket, path: '/future-plans' },
     ];
 
     return (
@@ -44,7 +45,7 @@ const Navbar = () => {
                                     <X size={18} />
                                 </button>
                             </div>
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-2 gap-3">
                                 {moreItems.map((item) => {
                                     const Icon = item.icon;
                                     const isActive = location.pathname === item.path;

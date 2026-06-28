@@ -7,6 +7,7 @@ import Debts from './pages/Debts';
 import Todos from './pages/Todos';
 import Statistics from './pages/Statistics';
 import Goals from './pages/Goals';
+import FuturePlanner from './pages/FuturePlanner';
 import Navbar from './components/Navbar';
 import SecurityLock from './components/SecurityLock';
 
@@ -23,6 +24,7 @@ function App() {
             <Route path="/todos" element={<Todos />} />
             <Route path="/stats" element={<Statistics />} />
             <Route path="/goals" element={<Goals />} />
+            <Route path="/future-plans" element={<FuturePlanner />} />
           </Routes>
           <Navbar />
         </div>
