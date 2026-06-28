@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api/api';
-import { Plus, ArrowUpRight, ArrowDownLeft, TrendingUp, Bell, Settings, Edit2, Calendar as CalIcon, DollarSign, RefreshCw, ArrowRightLeft, Zap, Sparkles, Lock, FileText, Printer, X } from 'lucide-react';
+import { Plus, ArrowUpRight, ArrowDownLeft, TrendingUp, Bell, Settings, Edit2, Calendar as CalIcon, DollarSign, RefreshCw, ArrowRightLeft, Zap, Sparkles, Lock, FileText, Printer, X, Download } from 'lucide-react';
 import NotificationsModal from '../components/NotificationsModal';
 import SettingsManager from '../components/SettingsManager';
 import { motion, AnimatePresence } from 'framer-motion';
 import CustomModal from '../components/CustomModal';
 import AmountInput from '../components/AmountInput';
+import html2pdf from 'html2pdf.js';
 
 const Dashboard = () => {
     const [cards, setCards] = useState([]);
@@ -28,6 +29,7 @@ const Dashboard = () => {
     const [isMasterReportOpen, setIsMasterReportOpen] = useState(false);
     const [masterReportData, setMasterReportData] = useState({ transactions: [], projects: [], stats: { byCategory: [] }, budget: { startingCapital: 0 } });
     const [loadingReport, setLoadingReport] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
 
     useEffect(() => {
         const handleFocus = () => {
@@ -78,6 +80,27 @@ const Dashboard = () => {
             console.error("Error loading master report data", error);
         } finally {
             setLoadingReport(false);
+        }
+    };
+
+    const handleDownloadPDF = async () => {
+        const element = document.getElementById('printable-master-report');
+        if (!element) return;
+        setIsDownloading(true);
+        const opt = {
+            margin:       [8, 8, 8, 8],
+            filename:     `Financial_Report_${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#0f172a' },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        try {
+            await html2pdf().set(opt).from(element).save();
+        } catch (e) {
+            console.error("Error generating direct PDF:", e);
+            window.print();
+        } finally {
+            setIsDownloading(false);
         }
     };
 
@@ -186,7 +209,7 @@ const Dashboard = () => {
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                     <div>
                         <p className="text-blue-100 text-xs mb-1">إجمالي الرصيد</p>
-                        <h2 className="text-2xl sm:text-3xl font-black break-words">{totalBalance.toLocaleString('en-US')} د.ع</h2>
+                        <h2 className="text-2xl sm:text-3xl font-black break-words"><span dir="ltr" className="font-sans inline-block">{totalBalance.toLocaleString('en-US')}</span> د.ع</h2>
                     </div>
                     <div className="text-right sm:text-left w-full sm:w-auto bg-black/20 sm:bg-transparent p-3 sm:p-0 rounded-2xl">
                         <p className="text-blue-100 text-xs mb-1">صندوق الادخار</p>
@@ -197,7 +220,7 @@ const Dashboard = () => {
                             }}
                             className="text-base sm:text-lg font-black bg-white/20 px-3.5 py-1.5 rounded-xl hover:bg-white/30 transition-colors w-full sm:w-auto text-center"
                         >
-                            {savings.toLocaleString('en-US')} د.ع
+                            <span dir="ltr" className="font-sans inline-block">{savings.toLocaleString('en-US')}</span> د.ع
                         </button>
                     </div>
                 </div>
@@ -265,7 +288,7 @@ const Dashboard = () => {
                             className="flex items-center justify-between sm:justify-start w-full sm:w-auto gap-2 hover:opacity-80 transition-opacity bg-white/5 px-3.5 py-2 rounded-xl border border-white/5 group-hover:border-primary/30"
                             title="تعديل الميزانية اليومية"
                         >
-                            <h2 className="text-lg sm:text-xl font-black text-primary">{Math.round(budgetStatus.budget || 0).toLocaleString('en-US')} د.ع</h2>
+                            <h2 className="text-lg sm:text-xl font-black text-primary"><span dir="ltr" className="font-sans inline-block">{Math.round(budgetStatus.budget || 0).toLocaleString('en-US')}</span> د.ع</h2>
                             <Edit2 size={14} className="text-gray-400 shrink-0" />
                         </button>
                     </div>
@@ -274,8 +297,8 @@ const Dashboard = () => {
                 {/* Progress Bar */}
                 <div className="space-y-2">
                     <div className="flex justify-between text-xs font-bold text-gray-400 flex-wrap gap-1">
-                        <span>المصروف: <span className="text-white">{Math.round(budgetStatus.spent || 0).toLocaleString('en-US')} د.ع</span></span>
-                        <span>المتبقي: <span className={budgetStatus.remaining >= 0 ? "text-green-400" : "text-red-400"}>{Math.round(budgetStatus.remaining || 0).toLocaleString('en-US')} د.ع</span></span>
+                        <span>المصروف: <span className="text-white"><span dir="ltr" className="font-sans inline-block">{Math.round(budgetStatus.spent || 0).toLocaleString('en-US')}</span> د.ع</span></span>
+                        <span>المتبقي: <span className={budgetStatus.remaining >= 0 ? "text-green-400" : "text-red-400"}><span dir="ltr" className="font-sans inline-block">{Math.round(budgetStatus.remaining || 0).toLocaleString('en-US')}</span> د.ع</span></span>
                     </div>
                     <div className="h-3 w-full bg-gray-800 rounded-full overflow-hidden p-0.5 border border-white/5">
                         <div
@@ -327,7 +350,7 @@ const Dashboard = () => {
                                     <p className="text-[10px] text-gray-500">{new Date(tx.date).toLocaleDateString('en-US')}</p>
                                 </div>
                             </div>
-                            <p className="font-black text-xs sm:text-sm shrink-0">{tx.amount.toLocaleString('en-US')} د.ع</p>
+                            <p className="font-black text-xs sm:text-sm shrink-0"><span dir="ltr" className="font-sans inline-block">{tx.amount.toLocaleString('en-US')}</span> د.ع</p>
                         </div>
                     ))}
                 </div>
@@ -530,11 +553,19 @@ const Dashboard = () => {
                                 </div>
                                 <div className="flex items-center gap-3 w-full sm:w-auto">
                                     <button
-                                        onClick={() => window.print()}
+                                        onClick={handleDownloadPDF}
+                                        disabled={isDownloading}
                                         className="bg-purple-500 hover:bg-purple-400 text-black font-black px-6 py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-xl shadow-purple-500/20 text-xs sm:text-sm active:scale-95 flex-1 sm:flex-initial"
                                     >
-                                        <Printer size={18} />
-                                        🖨️ طباعة وحفظ PDF
+                                        <Download size={18} />
+                                        <span>{isDownloading ? 'جاري التحميل...' : '📥 تحميل ملف PDF مباشر'}</span>
+                                    </button>
+                                    <button
+                                        onClick={() => window.print()}
+                                        className="glass px-4 py-3.5 rounded-2xl font-bold text-purple-300 hover:text-white transition-all text-xs sm:text-sm active:scale-95 hidden sm:flex items-center gap-1"
+                                        title="طباعة تقليدية"
+                                    >
+                                        <Printer size={16} />
                                     </button>
                                     <button
                                         onClick={() => setIsMasterReportOpen(false)}
@@ -546,7 +577,7 @@ const Dashboard = () => {
                             </div>
 
                             {/* Printable Report Content */}
-                            <div className="space-y-6 sm:space-y-8 bg-slate-900 sm:p-4 rounded-2xl text-white">
+                            <div id="printable-master-report" className="space-y-6 sm:space-y-8 bg-slate-900 sm:p-4 rounded-2xl text-white">
                                 {/* Header */}
                                 <div className="flex flex-col sm:flex-row justify-between items-start border-b border-white/10 pb-6 gap-4">
                                     <div>
@@ -556,8 +587,8 @@ const Dashboard = () => {
                                         <p className="text-gray-300 text-xs sm:text-sm mt-1">وثيقة مالية متكاملة لرصيدك، أقسامك، حركاتك وخططك المستقبلية</p>
                                     </div>
                                     <div className="text-left bg-white/5 p-3 rounded-2xl border border-white/10 text-xs font-mono text-gray-300 w-full sm:w-auto">
-                                        <div>تاريخ الاستخراج: {new Date().toLocaleDateString('ar-IQ')}</div>
-                                        <div>إجمالي المعاملات: {masterReportData.transactions.length}</div>
+                                        <div>تاريخ الاستخراج: <span dir="ltr" className="font-sans font-bold">{new Date().toLocaleDateString('en-GB')}</span></div>
+                                        <div>إجمالي المعاملات: <span dir="ltr" className="font-sans font-bold">{masterReportData.transactions.length}</span></div>
                                     </div>
                                 </div>
 
@@ -565,19 +596,19 @@ const Dashboard = () => {
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                     <div className="print-card glass p-4 rounded-2xl border border-white/10">
                                         <span className="text-xs text-gray-400 block truncate">إجمالي الرصيد الحالي</span>
-                                        <span className="text-base sm:text-lg font-black text-white mt-1 block truncate">{totalBalance.toLocaleString()} د.ع</span>
+                                        <span className="text-base sm:text-lg font-black text-white mt-1 block truncate"><span dir="ltr" className="font-sans">{totalBalance.toLocaleString('en-US')}</span> د.ع</span>
                                     </div>
                                     <div className="print-card glass p-4 rounded-2xl border border-white/10">
                                         <span className="text-xs text-gray-400 block truncate">صندوق الادخار</span>
-                                        <span className="text-base sm:text-lg font-black text-green-400 mt-1 block truncate">+{savings.toLocaleString()} د.ع</span>
+                                        <span className="text-base sm:text-lg font-black text-green-400 mt-1 block truncate">+<span dir="ltr" className="font-sans">{savings.toLocaleString('en-US')}</span> د.ع</span>
                                     </div>
                                     <div className="print-card glass p-4 rounded-2xl border border-white/10">
                                         <span className="text-xs text-gray-400 block truncate">إجمالي مصاريف الشهر</span>
-                                        <span className="text-base sm:text-lg font-black text-red-400 mt-1 block truncate">{totalSpentReport.toLocaleString()} د.ع</span>
+                                        <span className="text-base sm:text-lg font-black text-red-400 mt-1 block truncate"><span dir="ltr" className="font-sans">{totalSpentReport.toLocaleString('en-US')}</span> د.ع</span>
                                     </div>
                                     <div className="print-card glass p-4 rounded-2xl border border-white/10">
                                         <span className="text-xs text-gray-400 block truncate">رأس مال المشاريع المتاح</span>
-                                        <span className="text-base sm:text-lg font-black text-purple-300 mt-1 block truncate">{parseFloat(masterReportData.budget.startingCapital || 0).toLocaleString()} د.ع</span>
+                                        <span className="text-base sm:text-lg font-black text-purple-300 mt-1 block truncate"><span dir="ltr" className="font-sans">{parseFloat(masterReportData.budget.startingCapital || 0).toLocaleString('en-US')}</span> د.ع</span>
                                     </div>
                                 </div>
 
@@ -606,8 +637,8 @@ const Dashboard = () => {
                                                             <tr key={cat.name} className="hover:bg-white/5">
                                                                 <td className="p-3 text-gray-400 font-mono whitespace-nowrap">#{idx + 1}</td>
                                                                 <td className="p-3 font-black text-white whitespace-nowrap">{cat.name}</td>
-                                                                <td className="p-3 text-red-400 font-black whitespace-nowrap">{cat.amount.toLocaleString()} د.ع</td>
-                                                                <td className="p-3 text-primary whitespace-nowrap">{pct}%</td>
+                                                                <td className="p-3 text-red-400 font-black whitespace-nowrap"><span dir="ltr" className="font-sans">{cat.amount.toLocaleString('en-US')}</span> د.ع</td>
+                                                                <td className="p-3 text-primary whitespace-nowrap"><span dir="ltr" className="font-sans">{pct}</span>%</td>
                                                             </tr>
                                                         );
                                                     })}
@@ -640,12 +671,12 @@ const Dashboard = () => {
                                                     {masterReportData.transactions.slice(0, 50).map((tx) => (
                                                         <tr key={tx.id} className="hover:bg-white/5">
                                                             <td className="p-3 text-xs font-mono text-gray-400 whitespace-nowrap" dir="ltr">
-                                                                {new Date(tx.date || Date.now()).toLocaleDateString('en-US')}
+                                                                {new Date(tx.date || Date.now()).toLocaleDateString('en-GB')}
                                                             </td>
                                                             <td className="p-3 font-black text-white whitespace-nowrap">{tx.description || 'بدون وصف'}</td>
                                                             <td className="p-3 text-gray-300 whitespace-nowrap">{tx.category?.name || 'عام'}</td>
                                                             <td className={`p-3 font-black whitespace-nowrap ${tx.type === 'EXPENSE' ? 'text-red-400' : 'text-green-400'}`}>
-                                                                {parseFloat(tx.amount || 0).toLocaleString()} د.ع
+                                                                <span dir="ltr" className="font-sans">{parseFloat(tx.amount || 0).toLocaleString('en-US')}</span> د.ع
                                                             </td>
                                                             <td className="p-3 whitespace-nowrap">
                                                                 <span className={`px-2 py-0.5 rounded-full text-[11px] font-black ${tx.type === 'EXPENSE' ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
@@ -690,7 +721,7 @@ const Dashboard = () => {
                                                                 <td className="p-3 font-black text-white whitespace-nowrap">{project.name}</td>
                                                                 <td className="p-3 whitespace-nowrap" dir="ltr">{project.targetMonth || '📦 Unscheduled'}</td>
                                                                 <td className="p-3 text-primary whitespace-nowrap" dir="ltr">
-                                                                    {min === max ? max.toLocaleString() : `${min.toLocaleString()} - ${max.toLocaleString()}`} د.ع
+                                                                    <span className="font-sans">{min === max ? max.toLocaleString('en-US') : `${min.toLocaleString('en-US')} - ${max.toLocaleString('en-US')}`}</span> د.ع
                                                                 </td>
                                                                 <td className="p-3 whitespace-nowrap">
                                                                     <span className="text-xs font-bold text-gray-300">

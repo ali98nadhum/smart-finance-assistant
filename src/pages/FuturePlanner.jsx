@@ -4,6 +4,7 @@ import { Plus, Trash2, Edit2, Sparkles, Rocket, Briefcase, Check, Clock, DollarS
 import { motion, AnimatePresence } from 'framer-motion';
 import AmountInput from '../components/AmountInput';
 import confetti from 'canvas-confetti';
+import html2pdf from 'html2pdf.js';
 
 const PRIORITY_LABELS = {
     HIGH: { label: 'أولوية قصوى', color: 'bg-red-500/20 text-red-400 border-red-500/30', icon: '🔥' },
@@ -27,6 +28,28 @@ const FuturePlanner = () => {
     // Completion modal state
     const [completeModalProject, setCompleteModalProject] = useState(null);
     const [finalCostInput, setFinalCostInput] = useState('');
+    const [isDownloading, setIsDownloading] = useState(false);
+
+    const handleDownloadPDF = async () => {
+        const element = document.getElementById('printable-future-report');
+        if (!element) return;
+        setIsDownloading(true);
+        const opt = {
+            margin:       [8, 8, 8, 8],
+            filename:     `Future_Projects_Report_${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#0f172a' },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        try {
+            await html2pdf().set(opt).from(element).save();
+        } catch (e) {
+            console.error("Error generating future projects PDF:", e);
+            window.print();
+        } finally {
+            setIsDownloading(false);
+        }
+    };
 
     // Form state
     const [form, setForm] = useState({
@@ -350,7 +373,7 @@ const FuturePlanner = () => {
                         </div>
                         <div className="min-w-0">
                             <span className="text-xs text-gray-400 block truncate">رأس المال المخصص</span>
-                            <span className="text-base sm:text-lg font-black text-white truncate block">{parseFloat(budgetSettings.startingCapital || 0).toLocaleString()} <span className="text-xs text-primary">د.ع</span></span>
+                            <span className="text-base sm:text-lg font-black text-white truncate block"><span dir="ltr" className="font-sans inline-block">{parseFloat(budgetSettings.startingCapital || 0).toLocaleString('en-US')}</span> <span className="text-xs text-primary">د.ع</span></span>
                         </div>
                     </div>
 
@@ -360,7 +383,7 @@ const FuturePlanner = () => {
                         </div>
                         <div className="min-w-0">
                             <span className="text-xs text-gray-400 block truncate">الإضافة الافتراضية الشهرياً</span>
-                            <span className="text-base sm:text-lg font-black text-green-400 truncate block">+{defaultMonthlyAddition.toLocaleString()} <span className="text-xs text-gray-400">د.ع</span></span>
+                            <span className="text-base sm:text-lg font-black text-green-400 truncate block">+<span dir="ltr" className="font-sans inline-block">{defaultMonthlyAddition.toLocaleString('en-US')}</span> <span className="text-xs text-gray-400">د.ع</span></span>
                         </div>
                     </div>
 
@@ -371,7 +394,7 @@ const FuturePlanner = () => {
                         <div className="min-w-0">
                             <span className="text-xs text-gray-400 block truncate">إجمالي التكلفة (من - إلى)</span>
                             <span className="text-sm sm:text-base font-black text-white block truncate" dir="ltr">
-                                {totalMinCost === totalMaxCost ? totalMaxCost.toLocaleString() : `${totalMinCost.toLocaleString()} - ${totalMaxCost.toLocaleString()}`} <span className="text-[10px] text-purple-300">د.ع</span>
+                                <span className="font-sans inline-block">{totalMinCost === totalMaxCost ? totalMaxCost.toLocaleString('en-US') : `${totalMinCost.toLocaleString('en-US')} - ${totalMaxCost.toLocaleString('en-US')}`}</span> <span className="text-[10px] text-purple-300">د.ع</span>
                             </span>
                         </div>
                     </div>
@@ -454,7 +477,7 @@ const FuturePlanner = () => {
                                                     title="اضغط لتغيير أو تصفير ميزانية هذا الشهر فقط"
                                                 >
                                                     <Edit3 size={13} />
-                                                    <span>إضافة الشهر: {monthAdditionAmount === 0 ? '0 د.ع' : `+${monthAdditionAmount.toLocaleString()} د.ع`}</span>
+                                                    <span>إضافة الشهر: {monthAdditionAmount === 0 ? '0 د.ع' : <span dir="ltr" className="font-sans inline-block">+{monthAdditionAmount.toLocaleString('en-US')} د.ع</span>}</span>
                                                 </button>
                                             )}
 
@@ -483,14 +506,14 @@ const FuturePlanner = () => {
                                             <div className="bg-black/30 p-2.5 rounded-2xl border border-white/5 flex flex-col justify-center">
                                                 <span className="text-gray-400">💵 المتوقع توفره بالشهر:</span>
                                                 <span className="font-black text-white text-xs sm:text-sm mt-0.5" dir="ltr">
-                                                    {expAvailMin === expAvailMax ? expAvailMax.toLocaleString() : `${expAvailMin.toLocaleString()} - ${expAvailMax.toLocaleString()}`} د.ع
+                                                    <span className="font-sans inline-block">{expAvailMin === expAvailMax ? expAvailMax.toLocaleString('en-US') : `${expAvailMin.toLocaleString('en-US')} - ${expAvailMax.toLocaleString('en-US')}`}</span> د.ع
                                                 </span>
                                             </div>
 
                                             <div className="bg-black/30 p-2.5 rounded-2xl border border-white/5 flex flex-col justify-center">
                                                 <span className="text-gray-400">⚡ تكلفة المشاريع (من - إلى):</span>
                                                 <span className="font-black text-purple-300 text-xs sm:text-sm mt-0.5" dir="ltr">
-                                                    {minTotalCost === maxTotalCost ? maxTotalCost.toLocaleString() : `${minTotalCost.toLocaleString()} - ${maxTotalCost.toLocaleString()}`} د.ع
+                                                    <span className="font-sans inline-block">{minTotalCost === maxTotalCost ? maxTotalCost.toLocaleString('en-US') : `${minTotalCost.toLocaleString('en-US')} - ${maxTotalCost.toLocaleString('en-US')}`}</span> د.ع
                                                 </span>
                                             </div>
 
@@ -504,7 +527,7 @@ const FuturePlanner = () => {
                                                     <span>📉 المتبقي للأشهر القادمة (من - إلى):</span>
                                                 </div>
                                                 <span className="font-black text-xs sm:text-sm mt-0.5" dir="ltr">
-                                                    {remMin === remMax ? remMax.toLocaleString() : `${remMin.toLocaleString()} - ${remMax.toLocaleString()}`} د.ع
+                                                    <span className="font-sans inline-block">{remMin === remMax ? remMax.toLocaleString('en-US') : `${remMin.toLocaleString('en-US')} - ${remMax.toLocaleString('en-US')}`}</span> د.ع
                                                 </span>
                                             </div>
                                         </div>
@@ -599,7 +622,7 @@ const FuturePlanner = () => {
                                                         <div className="flex items-center gap-1.5 bg-black/30 px-3.5 py-1.5 rounded-2xl border border-white/5">
                                                             <DollarSign size={15} className="text-primary shrink-0" />
                                                             <span className="text-xs sm:text-sm font-black text-white" dir="ltr">
-                                                                {min === max ? max.toLocaleString() : `${min.toLocaleString()} - ${max.toLocaleString()}`}
+                                                                <span className="font-sans inline-block">{min === max ? max.toLocaleString('en-US') : `${min.toLocaleString('en-US')} - ${max.toLocaleString('en-US')}`}</span>
                                                                 <span className="text-[10px] font-normal text-gray-400 ml-1">د.ع</span>
                                                             </span>
                                                         </div>
@@ -944,7 +967,7 @@ const FuturePlanner = () => {
                                         >
                                             <div className="truncate">
                                                 <div className="font-bold text-sm text-white group-hover/item:text-primary transition-colors truncate">{project.name}</div>
-                                                <div className="text-[11px] text-gray-400 mt-0.5">تكلفة: {min === max ? max.toLocaleString() : `${min.toLocaleString()} - ${max.toLocaleString()}`} د.ع</div>
+                                                <div className="text-[11px] text-gray-400 mt-0.5">تكلفة: <span dir="ltr" className="font-sans inline-block">{min === max ? max.toLocaleString('en-US') : `${min.toLocaleString('en-US')} - ${max.toLocaleString('en-US')}`}</span> د.ع</div>
                                             </div>
                                             <span className="text-xs font-bold bg-primary/20 text-primary px-3 py-1 rounded-xl shrink-0">ربط ➕</span>
                                         </button>
@@ -1054,11 +1077,19 @@ const FuturePlanner = () => {
                                 </div>
                                 <div className="flex items-center gap-3 w-full sm:w-auto">
                                     <button
-                                        onClick={() => window.print()}
+                                        onClick={handleDownloadPDF}
+                                        disabled={isDownloading}
                                         className="bg-purple-500 hover:bg-purple-400 text-black font-black px-6 py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-xl shadow-purple-500/20 text-xs sm:text-sm active:scale-95 flex-1 sm:flex-initial"
                                     >
-                                        <Printer size={18} />
-                                        🖨️ طباعة وحفظ PDF
+                                        <Download size={18} />
+                                        <span>{isDownloading ? 'جاري التحميل...' : '📥 تحميل ملف PDF مباشر'}</span>
+                                    </button>
+                                    <button
+                                        onClick={() => window.print()}
+                                        className="glass px-4 py-3.5 rounded-2xl font-bold text-purple-300 hover:text-white transition-all text-xs sm:text-sm active:scale-95 hidden sm:flex items-center gap-1"
+                                        title="طباعة تقليدية"
+                                    >
+                                        <Printer size={16} />
                                     </button>
                                     <button
                                         onClick={() => setIsReportModalOpen(false)}
@@ -1070,7 +1101,7 @@ const FuturePlanner = () => {
                             </div>
 
                             {/* Printable Report Content */}
-                            <div className="space-y-6 sm:space-y-8 bg-slate-900 sm:p-4 rounded-2xl text-white">
+                            <div id="printable-future-report" className="space-y-6 sm:space-y-8 bg-slate-900 sm:p-4 rounded-2xl text-white">
                                 {/* Header */}
                                 <div className="flex flex-col sm:flex-row justify-between items-start border-b border-white/10 pb-6 gap-4">
                                     <div>
@@ -1080,8 +1111,8 @@ const FuturePlanner = () => {
                                         <p className="text-gray-300 text-xs sm:text-sm mt-1">المساعد المالي الذكي - توثيق المحاكاة التراكمية وتكاليف المشاريع</p>
                                     </div>
                                     <div className="text-left bg-white/5 p-3 rounded-2xl border border-white/10 text-xs font-mono text-gray-300 w-full sm:w-auto">
-                                        <div>تاريخ التصدير: {new Date().toLocaleDateString('ar-IQ')}</div>
-                                        <div>إجمالي المشاريع: {projects.length}</div>
+                                        <div>تاريخ التصدير: <span dir="ltr" className="font-sans font-bold">{new Date().toLocaleDateString('en-GB')}</span></div>
+                                        <div>إجمالي المشاريع: <span dir="ltr" className="font-sans font-bold">{projects.length}</span></div>
                                     </div>
                                 </div>
 
@@ -1089,20 +1120,20 @@ const FuturePlanner = () => {
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                     <div className="print-card glass p-4 rounded-2xl border border-white/10">
                                         <span className="text-xs text-gray-400 block">رأس المال الأساسي</span>
-                                        <span className="text-base sm:text-lg font-black text-white mt-1 block">{parseFloat(budgetSettings.startingCapital || 0).toLocaleString()} د.ع</span>
+                                        <span className="text-base sm:text-lg font-black text-white mt-1 block"><span dir="ltr" className="font-sans">{parseFloat(budgetSettings.startingCapital || 0).toLocaleString('en-US')}</span> د.ع</span>
                                     </div>
                                     <div className="print-card glass p-4 rounded-2xl border border-white/10">
                                         <span className="text-xs text-gray-400 block">الادخار الشهري</span>
-                                        <span className="text-base sm:text-lg font-black text-green-400 mt-1 block">+{defaultMonthlyAddition.toLocaleString()} د.ع</span>
+                                        <span className="text-base sm:text-lg font-black text-green-400 mt-1 block">+<span dir="ltr" className="font-sans">{defaultMonthlyAddition.toLocaleString('en-US')}</span> د.ع</span>
                                     </div>
                                     <div className="print-card glass p-4 rounded-2xl border border-white/10">
                                         <span className="text-xs text-gray-400 block">المشاريع المنجزة</span>
-                                        <span className="text-base sm:text-lg font-black text-primary mt-1 block">{projects.filter(p => p.status === 'COMPLETED').length} مشروع</span>
+                                        <span className="text-base sm:text-lg font-black text-primary mt-1 block"><span dir="ltr" className="font-sans">{projects.filter(p => p.status === 'COMPLETED').length}</span> مشروع</span>
                                     </div>
                                     <div className="print-card glass p-4 rounded-2xl border border-white/10">
                                         <span className="text-xs text-gray-400 block">إجمالي تكاليف المشاريع</span>
                                         <span className="text-sm sm:text-base font-black text-purple-300 mt-1 block" dir="ltr">
-                                            {totalMinCost === totalMaxCost ? totalMaxCost.toLocaleString() : `${totalMinCost.toLocaleString()} - ${totalMaxCost.toLocaleString()}`} د.ع
+                                            <span className="font-sans">{totalMinCost === totalMaxCost ? totalMaxCost.toLocaleString('en-US') : `${totalMinCost.toLocaleString('en-US')} - ${totalMaxCost.toLocaleString('en-US')}`}</span> د.ع
                                         </span>
                                     </div>
                                 </div>
@@ -1128,16 +1159,16 @@ const FuturePlanner = () => {
                                                     <tr key={row.monthStr} className="hover:bg-white/5">
                                                         <td className="p-3 font-black text-white whitespace-nowrap" dir="ltr">{row.monthName}</td>
                                                         <td className="p-3 whitespace-nowrap" dir="ltr">
-                                                            {row.expAvailMin === row.expAvailMax ? row.expAvailMax.toLocaleString() : `${row.expAvailMin.toLocaleString()} - ${row.expAvailMax.toLocaleString()}`} د.ع
+                                                            <span className="font-sans">{row.expAvailMin === row.expAvailMax ? row.expAvailMax.toLocaleString('en-US') : `${row.expAvailMin.toLocaleString('en-US')} - ${row.expAvailMax.toLocaleString('en-US')}`}</span> د.ع
                                                         </td>
-                                                        <td className="p-3 text-green-400 whitespace-nowrap">
-                                                            {row.addition === 0 ? '0 (بدون إضافة)' : `+${row.addition.toLocaleString()} د.ع`}
+                                                        <td className="p-3 text-green-400 whitespace-nowrap" dir="ltr">
+                                                            {row.addition === 0 ? '0 (بدون إضافة)' : <span className="font-sans">+{row.addition.toLocaleString('en-US')} د.ع</span>}
                                                         </td>
                                                         <td className="p-3 text-purple-300 whitespace-nowrap" dir="ltr">
-                                                            {row.minCost === row.maxCost ? row.maxCost.toLocaleString() : `${row.minCost.toLocaleString()} - ${row.maxCost.toLocaleString()}`} د.ع
+                                                            <span className="font-sans">{row.minCost === row.maxCost ? row.maxCost.toLocaleString('en-US') : `${row.minCost.toLocaleString('en-US')} - ${row.maxCost.toLocaleString('en-US')}`}</span> د.ع
                                                         </td>
                                                         <td className={`p-3 font-black whitespace-nowrap ${row.remMin >= 0 ? 'text-green-400' : 'text-red-400'}`} dir="ltr">
-                                                            {row.remMin === row.remMax ? row.remMax.toLocaleString() : `${row.remMin.toLocaleString()} - ${row.remMax.toLocaleString()}`} د.ع
+                                                            <span className="font-sans">{row.remMin === row.remMax ? row.remMax.toLocaleString('en-US') : `${row.remMin.toLocaleString('en-US')} - ${row.remMax.toLocaleString('en-US')}`}</span> د.ع
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -1185,7 +1216,7 @@ const FuturePlanner = () => {
                                                                 </span>
                                                             </td>
                                                             <td className="p-3 text-primary whitespace-nowrap" dir="ltr">
-                                                                {min === max ? max.toLocaleString() : `${min.toLocaleString()} - ${max.toLocaleString()}`} د.ع
+                                                                <span className="font-sans">{min === max ? max.toLocaleString('en-US') : `${min.toLocaleString('en-US')} - ${max.toLocaleString('en-US')}`}</span> د.ع
                                                             </td>
                                                             <td className="p-3 whitespace-nowrap">
                                                                 <span className={`px-2.5 py-1 rounded-full text-xs font-black ${isCompleted ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-300'}`}>
